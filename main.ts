@@ -6,6 +6,18 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { collectAttachmentPaths, transformToTabular, Attachment } from './transform';
 
+// Define global type for test results
+declare global {
+    var __TEST_RESULTS__: {
+        patientName: string;
+        medications: string;
+        nextAppointment: string | null;
+        requestId: string;
+        calculatedAt: string;
+        message: string;
+    } | undefined;
+}
+
 // Define constant for video directory path
 const VIDEO_DIR = path.join(__dirname, 'videos');
 
