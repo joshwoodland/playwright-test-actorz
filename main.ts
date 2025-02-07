@@ -9,6 +9,24 @@ import { collectAttachmentPaths, transformToTabular, Attachment } from './transf
 // Define constant for video directory path
 const VIDEO_DIR = path.join(__dirname, 'videos');
 
+// Define input interface for better type safety
+interface ActorInput {
+    patientName?: string;
+    medications?: string[];
+    email?: string;
+    password?: string;
+    apiEndpoint?: string;
+    testCode?: string;
+    memory?: number;
+    screenWidth?: number;
+    screenHeight?: number;
+    headful?: boolean;
+    timeout?: number;
+    darkMode?: boolean;
+    locale?: string;
+    video?: string;
+}
+
 const getConfig = (options: { screen: { width: number, height: number }, headful: boolean, timeout: number, locale: string, darkMode: boolean, ignoreHTTPSErrors: boolean, video: string }) => {
     const { screen, headful, timeout, ignoreHTTPSErrors, darkMode, locale, video } = options;
 
@@ -99,27 +117,57 @@ function updateConfig(args: {
 
 (async () => {
     await Actor.init();
-    const input = await Actor.getInput() as Dictionary;
-
-    // Set memory if specified in input
-    if (input['memory']) {
-        await Actor.setMemoryMbytes(input['memory'] as number);
-    }
-
-    storeTestCode({
-        contents: input['testCode'] as string,
-        path: path.join(__dirname, 'tests', 'test.spec.ts')
+    
+    // Get input with type safety
+    const input = await Actor.getInput() as ActorInput;
+    log.info('Received input parameters', {
+        hasPatientName: !!input.patientName,
+        hasMedications: !!input.medications,
+        patientNameLength: input.patientName?.length,
+        medicationsCount: input.medications?.length
     });
 
-    updateConfig(input);
+    // Set memory if specified in input
+    if (input.memory) {
+        await Actor.setMemoryMbytes(input.memory);
+    }
+
+    // Store test code if provided
+    if (input.testCode) {
+        storeTestCode({
+            contents: input.testCode,
+            path: path.join(__dirname, 'tests', 'test.spec.ts')
+        });
+    }
+
+    // Update configuration with input parameters
+    updateConfig({
+        screenWidth: input.screenWidth,
+        screenHeight: input.screenHeight,
+        headful: input.headful,
+        timeout: input.timeout,
+        darkMode: input.darkMode,
+        locale: input.locale,
+        video: input.video
+    });
+
+    // Process patient data with defaults
+    const patientName = input.patientName || 'Default Patient';
+    const medications = Array.isArray(input.medications) ? input.medications : [];
+    
+    log.info('Processing patient data', {
+        patientName,
+        medicationsCount: medications.length,
+        medications: medications
+    });
 
     // Pass all input values as environment variables
     runTests({
-        API_ENDPOINT: input['apiEndpoint'] as string || '',
-        EMAIL: input['email'] as string || '',
-        PASSWORD: input['password'] as string || '',
-        PATIENT_NAME: input['patientName'] as string || 'Unknown Patient',
-        MEDICATIONS: Array.isArray(input['medications']) ? input['medications'].join(', ') : ''
+        API_ENDPOINT: input.apiEndpoint || '',
+        EMAIL: input.email || '',
+        PASSWORD: input.password || '',
+        PATIENT_NAME: patientName,
+        MEDICATIONS: medications.join(', ')
     });
 
     // Store video files if they exist
