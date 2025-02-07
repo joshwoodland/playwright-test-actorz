@@ -269,24 +269,40 @@ test('Patient appointment verification', async ({ page }) => {
             const strategies = [
                 // Strategy 1: By placeholder
                 async () => {
+                    console.log('Trying search strategy 1: By placeholder');
                     const searchInput = page.getByPlaceholder('Search');
                     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+                    await searchInput.click();
                     await searchInput.fill(patientName);
                     await page.keyboard.press('Enter');
                     return true;
                 },
                 // Strategy 2: By role
                 async () => {
+                    console.log('Trying search strategy 2: By role');
                     const searchInput = page.getByRole('searchbox');
                     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+                    await searchInput.click();
                     await searchInput.fill(patientName);
                     await page.keyboard.press('Enter');
                     return true;
                 },
                 // Strategy 3: By common search selectors
                 async () => {
+                    console.log('Trying search strategy 3: By common search selectors');
                     const searchInput = page.locator('input[type="search"], .search-input, #search').first();
                     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+                    await searchInput.click();
+                    await searchInput.fill(patientName);
+                    await page.keyboard.press('Enter');
+                    return true;
+                },
+                // Strategy 4: By aria-label
+                async () => {
+                    console.log('Trying search strategy 4: By aria-label');
+                    const searchInput = page.locator('[aria-label*="search" i], [aria-label*="find" i]').first();
+                    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+                    await searchInput.click();
                     await searchInput.fill(patientName);
                     await page.keyboard.press('Enter');
                     return true;
@@ -299,39 +315,88 @@ test('Patient appointment verification', async ({ page }) => {
                         return true;
                     }
                 } catch (e) {
-                    console.log('Search strategy failed, trying next one...');
+                    console.log('Search strategy failed, trying next one...', e.message);
                 }
             }
             throw new Error('All search strategies failed');
         }
 
         await findAndSearchPatient();
+        console.log('✅ Search input completed');
 
-        // Wait for and click patient link
+        // Wait for search results to load
+        console.log('Waiting for search results...');
+        try {
+            await page.waitForLoadState('networkidle', { timeout: 10000 });
+            console.log('Network activity settled');
+        } catch (e) {
+            console.log('Network activity timeout, proceeding anyway');
+        }
+
+        // Additional wait for search results to render
+        await page.waitForTimeout(2000);
+        console.log('Extra wait completed');
+
+        // Wait for and click patient link with enhanced logging
         async function findAndClickPatient() {
+            console.log('Looking for patient link with name:', patientName);
             const strategies = [
                 // Strategy 1: By role and name
                 async () => {
+                    console.log('Trying patient link strategy 1: By role and name');
                     const link = page.getByRole('link', { name: patientName });
                     await link.waitFor({ state: 'visible', timeout: 5000 });
+                    const isVisible = await link.isVisible();
+                    console.log('Link visible status:', isVisible);
                     await link.click();
                     return true;
                 },
                 // Strategy 2: By text content
                 async () => {
+                    console.log('Trying patient link strategy 2: By text content');
                     const link = page.getByText(patientName, { exact: true });
                     await link.waitFor({ state: 'visible', timeout: 5000 });
+                    const isVisible = await link.isVisible();
+                    console.log('Link visible status:', isVisible);
                     await link.click();
                     return true;
                 },
                 // Strategy 3: By partial match
                 async () => {
+                    console.log('Trying patient link strategy 3: By partial match');
                     const link = page.locator(\`a:has-text("\${patientName}")\`).first();
                     await link.waitFor({ state: 'visible', timeout: 5000 });
+                    const isVisible = await link.isVisible();
+                    console.log('Link visible status:', isVisible);
                     await link.click();
+                    return true;
+                },
+                // Strategy 4: By table cell or list item
+                async () => {
+                    console.log('Trying patient link strategy 4: By table/list content');
+                    const element = page.locator('tr, li').filter({ hasText: patientName }).first();
+                    await element.waitFor({ state: 'visible', timeout: 5000 });
+                    const isVisible = await element.isVisible();
+                    console.log('Element visible status:', isVisible);
+                    await element.click();
+                    return true;
+                },
+                // Strategy 5: By fuzzy match
+                async () => {
+                    console.log('Trying patient link strategy 5: By fuzzy match');
+                    const nameParts = patientName.split(' ');
+                    const fuzzySelector = nameParts.map(part => \`:has-text("\${part}")\`).join('');
+                    const element = page.locator(\`a\${fuzzySelector}\`).first();
+                    await element.waitFor({ state: 'visible', timeout: 5000 });
+                    const isVisible = await element.isVisible();
+                    console.log('Element visible status:', isVisible);
+                    await element.click();
                     return true;
                 }
             ];
+
+            // Log the current page content for debugging
+            console.log('Current page content:', await page.content());
 
             for (const strategy of strategies) {
                 try {
@@ -339,16 +404,31 @@ test('Patient appointment verification', async ({ page }) => {
                         return true;
                     }
                 } catch (e) {
-                    console.log('Patient link strategy failed, trying next one...');
+                    console.log('Patient link strategy failed, trying next one...', e.message);
                 }
             }
             throw new Error('All patient link strategies failed');
         }
 
         await findAndClickPatient();
+        console.log('✅ Patient link clicked');
         
-        // Wait for patient page to load
-        await page.waitForLoadState('networkidle');
+        // Wait for patient page to load with enhanced logging
+        console.log('Waiting for patient page to load...');
+        try {
+            await page.waitForLoadState('networkidle', { timeout: 30000 });
+            console.log('Network activity settled');
+        } catch (e) {
+            console.log('Network activity timeout, proceeding anyway');
+        }
+
+        // Additional wait for page content to render
+        await page.waitForTimeout(2000);
+        console.log('Extra wait completed');
+
+        // Verify we're on the correct page
+        const currentUrl = page.url();
+        console.log('Current URL:', currentUrl);
         console.log('✅ Patient found');
 
         // 📅 3. Find next appointment with multiple strategies
@@ -447,10 +527,19 @@ test('Patient appointment verification', async ({ page }) => {
             step: error.name
         });
         
-        await page.screenshot({ 
-            path: path.join('test-results', \`error-state-\${process.env.ACTOR_RUN_ID || 'test'}.png\`),
-            fullPage: true 
-        });
+        try {
+            // Only attempt screenshot if page is still open
+            if (!page.isClosed()) {
+                await page.screenshot({ 
+                    path: path.join('test-results', \`error-state-\${process.env.ACTOR_RUN_ID || 'test'}.png\`),
+                    fullPage: true 
+                });
+            } else {
+                console.log('⚠️ Could not take error screenshot - page was already closed');
+            }
+        } catch (screenshotError) {
+            console.log('⚠️ Failed to capture error screenshot:', screenshotError.message);
+        }
         
         throw error;
     }
