@@ -4,12 +4,20 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "apiEndpoint": {
+            "title": "API Endpoint",
+            "type": "string",
+            "description": "The HTTP endpoint to fetch patient data from",
+            "editor": "textfield",
+            "default": "https://your-api.com/patients",
+            "sectionCaption": "API Configuration"
+        },
         "testCode": {
             "title": "Test suite code",
             "type": "string",
-            "description": "Contents of the test suite file. Environment variables EMAIL and PASSWORD are available during the run.",
+            "description": "Contents of the test suite file. Environment variables EMAIL, PASSWORD, API_ENDPOINT are available during the run.",
             "editor": "javascript",
-            "prefill": "import { test, expect } from '@playwright/test';\n\n// Access environment variables\nconst email = process.env.EMAIL;\nconst password = process.env.PASSWORD;\nconst patientName = process.env.PATIENT_NAME;\nconst medications = process.env.MEDICATIONS;\n\ntest('login and check patient', async ({ page }) => {\n    // Navigate to the login page\n    await page.goto('https://your-healthcare-site.com/login');\n\n    // Use the environment variables for login\n    await page.fill('#email', email);\n    await page.fill('#password', password);\n    await page.click('#login-button');\n\n    // Verify login success\n    await expect(page.locator('.user-profile')).toBeVisible();\n\n    // Check patient details\n    await page.goto(`https://your-healthcare-site.com/patients/${patientName}`);\n    await expect(page.locator('.patient-name')).toHaveText(patientName);\n    \n    // Verify medications if available\n    if (medications) {\n        const medList = medications.split(', ');\n        for (const med of medList) {\n            await expect(page.locator('.medications-list')).toContainText(med);\n        }\n    }\n});",
+            "prefill": "import { test, expect } from '@playwright/test';\n\nasync function getPatientData() {\n    const response = await fetch(process.env.API_ENDPOINT);\n    if (!response.ok) {\n        throw new Error(`HTTP error! status: ${response.status}`);\n    }\n    return await response.json();\n}\n\ntest('Dynamic patient data automation', async ({ page }) => {\n    // 📥 1. Get dynamic data from API\n    const patientData = await getPatientData();\n    console.log('Patient data received:', patientData);\n\n    // 🔐 2. Log in\n    await page.goto('https://www.simplepractice.com');\n    await page.click('text=Sign In');\n    await page.fill('input[name=\"email\"]', process.env.EMAIL);\n    await page.fill('input[name=\"password\"]', process.env.PASSWORD);\n    await page.click('button[type=\"submit\"]');\n\n    // ✅ 3. Use dynamic patient data\n    await page.goto(`https://secure.simplepractice.com/patients/${patientData.patientId}`);\n    \n    // Verify patient name\n    await expect(page.locator('.patient-name')).toHaveText(patientData.name);\n\n    // Check medications\n    if (patientData.medications && patientData.medications.length > 0) {\n        for (const med of patientData.medications) {\n            await expect(page.locator('.medications-list')).toContainText(med);\n        }\n    }\n\n    // 📸 4. Take evidence screenshots\n    await page.screenshot({ path: 'patient-details.png' });\n});",
             "sectionCaption": "Basic settings"
         },
         "screenWidth": {
@@ -75,5 +83,5 @@
             "prefill": []
         }
     },
-    "required": []
+    "required": ["apiEndpoint"]
 }

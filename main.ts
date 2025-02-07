@@ -111,8 +111,9 @@ function updateConfig(args: {
 
     // 🚀 3. Pass patient data + internal credentials to Playwright as ENV variables
     runTests({
-        EMAIL,
-        PASSWORD,
+        EMAIL: process.env.EMAIL || '',
+        PASSWORD: process.env.PASSWORD || '',
+        API_ENDPOINT: input['apiEndpoint'] as string,
         PATIENT_NAME: patientName,
         MEDICATIONS: medications
     });
