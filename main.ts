@@ -361,17 +361,36 @@ function updateConfig(args: {
         log.info('Test results stored in dataset');
     }
 
-    // Store video files if they exist
+    // Store screenshots and other artifacts
     try {
-        // Get the default key-value store for this run
         const kvs = await Actor.openKeyValueStore();
         log.info('Using run-specific key-value store', { 
             storeId: kvs.id
         });
 
+        // Store screenshots if they exist
+        const screenshotFiles = [
+            `patient-details-${process.env.ACTOR_RUN_ID || 'test'}.png`,
+            `error-state-${process.env.ACTOR_RUN_ID || 'test'}.png`
+        ];
+
+        for (const file of screenshotFiles) {
+            const screenshotPath = path.join(__dirname, file);
+            if (fs.existsSync(screenshotPath)) {
+                log.info('Processing screenshot', { path: screenshotPath });
+                const screenshotBuffer = fs.readFileSync(screenshotPath);
+                await kvs.setValue(file, screenshotBuffer, { contentType: 'image/png' });
+                log.info('Screenshot stored in key-value store', { key: file });
+            }
+        }
+
         // Store the HTML report
-        await kvs.setValue('report.html', fs.readFileSync(path.join(__dirname, 'playwright-report', 'index.html'), { encoding: 'utf-8' }), { contentType: 'text/html' });
-        
+        const reportPath = path.join(__dirname, 'playwright-report', 'index.html');
+        if (fs.existsSync(reportPath)) {
+            await kvs.setValue('report.html', fs.readFileSync(reportPath, { encoding: 'utf-8' }), { contentType: 'text/html' });
+            log.info('HTML report stored in key-value store');
+        }
+
         log.info('Video directory configuration', { 
             configuredPath: VIDEO_DIR,
             exists: fs.existsSync(VIDEO_DIR),

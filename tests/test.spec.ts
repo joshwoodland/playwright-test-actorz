@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
 
 test('Patient appointment verification', async ({ page }) => {
     try {
@@ -92,7 +93,7 @@ ${appointmentMessage}`;
 
         // 📸 7. Take evidence screenshots
         await page.screenshot({ 
-            path: `patient-details-${process.env.ACTOR_RUN_ID || 'test'}.png`,
+            path: path.join('test-results', `patient-details-${process.env.ACTOR_RUN_ID || 'test'}.png`),
             fullPage: true 
         });
         
@@ -107,7 +108,7 @@ ${appointmentMessage}`;
         });
         
         await page.screenshot({ 
-            path: `error-state-${process.env.ACTOR_RUN_ID || 'test'}.png`,
+            path: path.join('test-results', `error-state-${process.env.ACTOR_RUN_ID || 'test'}.png`),
             fullPage: true 
         });
         
