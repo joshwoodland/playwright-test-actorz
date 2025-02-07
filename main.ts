@@ -318,22 +318,33 @@ function updateConfig(args: {
             });
         }
 
-        // Process other attachments
-        const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8 }));
-        const attachmentPaths = collectAttachmentPaths(jsonReport);
+        try {
+            // Process test results and attachments
+            const testResultsPath = path.join(__dirname, 'test-results.json');
+            if (fs.existsSync(testResultsPath)) {
+                const jsonReport = JSON.parse(fs.readFileSync(testResultsPath, { encoding: 'utf-8' }));
+                const paths = collectAttachmentPaths(jsonReport);
+                
+                const links = await Promise.all(paths.map(async (attachment: Attachment) => {
+                    const content = fs.readFileSync(path.join(__dirname, attachment.path));
+                    const key = attachment.key;
+                    await kvs.setValue(key, content, { contentType: attachment.type });
+                    return {
+                        ...attachment,
+                        url: `https://api.apify.com/v2/key-value-stores/${kvs.id}/records/${key}`
+                    };
+                }));
 
-        const attachmentLinks = await Promise.all(attachmentPaths.map(async (attachment: Attachment) => {
-            const content = fs.readFileSync(path.join(__dirname, attachment.path));
-            const key = attachment.key;
-            await kvs.setValue(key, content, { contentType: attachment.type });
-            return {
-                ...attachment,
-                url: `https://api.apify.com/v2/key-value-stores/${kvs.id}/records/${key}`
-            };
-        }));
-
-        const dataset = await Actor.openDataset();
-        await dataset.pushData(transformToTabular(jsonReport, attachmentLinks));
+                const dataset = await Actor.openDataset();
+                await dataset.pushData(transformToTabular(jsonReport, links));
+            } else {
+                log.warning('Test results file not found', { path: testResultsPath });
+            }
+        } catch (testError) {
+            log.error('Error processing test results', {
+                error: testError instanceof Error ? testError.message : String(testError)
+            });
+        }
 
     } catch (error) {
         log.error('Error handling storage', { 
