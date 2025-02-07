@@ -61,8 +61,6 @@
             "enumTitles": ["Always", "Never", "Retain on failure", "On first retry"],
             "description": "Record video of the test run."
         },
-
-        // ✅ New Patient Data Fields
         "patientName": {
             "title": "Patient Name",
             "type": "string",
