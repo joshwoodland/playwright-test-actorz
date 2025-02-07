@@ -4,7 +4,7 @@ import { Dictionary } from 'apify-client';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { collectAttachmentPaths, transformToTabular } from './transform';
+import { collectAttachmentPaths, transformToTabular, Attachment } from './transform';
 
 // 🔐 1. Internal credentials (hardcoded)
 const EMAIL = 'smartwoodland@gmail.com';
@@ -89,8 +89,8 @@ function updateConfig(args: {
     const input = await Actor.getInput() as Dictionary;
 
     // 📥 2. Get patient data dynamically
-    const patientName = input['patientName'] || 'Unknown Patient';
-    const medications = (input['medications'] || []).join(', ');
+    const patientName = (input['patientName'] as string) || 'Unknown Patient';
+    const medications = ((input['medications'] as string[]) || []).join(', ');
 
     storeTestCode({
         contents: input['testCode'] as string,
@@ -113,5 +113,18 @@ function updateConfig(args: {
     const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
     const attachmentPaths = collectAttachmentPaths(jsonReport);
 
-    const attachmentLinks = await Promise.all(attachmentPaths.map(async (x) => {
-        con
+    const attachmentLinks = await Promise.all(attachmentPaths.map(async (attachment: Attachment) => {
+        const content = fs.readFileSync(path.join(__dirname, attachment.path));
+        const key = attachment.key;
+        await kvs.setValue(key, content, { contentType: attachment.type });
+        return {
+            ...attachment,
+            url: `https://api.apify.com/v2/key-value-stores/${kvs.id}/records/${key}`
+        };
+    }));
+
+    const dataset = await Actor.openDataset();
+    await dataset.pushData(transformToTabular(jsonReport, attachmentLinks));
+
+    await Actor.exit();
+})();

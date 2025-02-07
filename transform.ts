@@ -30,12 +30,12 @@ export function transformToTabular(testResults: Record<string, any>, attachmentL
     return acc;
 }
 
-interface Attachment {
+export interface Attachment {
     key: string, 
     path: string, 
     type: string,
     url?: string,
-};
+}
 
 function _collectAttachmentPaths(acc: Attachment[], testResults: Record<string, any>) {
     for(let e of Object.entries(testResults)) {
