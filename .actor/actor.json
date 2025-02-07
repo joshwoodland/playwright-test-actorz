@@ -12,7 +12,21 @@
 		"run": {
 			"memoryMbytes": 8192,
 			"minMemoryMbytes": 4096,
-			"cpu": 2
+			"maxMemoryMbytes": 32768,
+			"cpu": 2,
+			"timeoutSecs": 1020
+		}
+	},
+	"options": {
+		"build": {
+			"memory": 8192
+		},
+		"run": {
+			"memory": 8192,
+			"minMemory": 4096,
+			"maxMemory": 32768,
+			"cpu": 2,
+			"timeoutSecs": 1020
 		}
 	},
 	"environmentVariables": {
