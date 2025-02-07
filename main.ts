@@ -46,13 +46,11 @@ function runTests(envVars: { [key: string]: string }) {
             stdio: 'inherit',
             env: {
                 ...process.env,
-                ...envVars,
-                EMAIL: email,
-                PASSWORD: password
+                ...envVars
             },
         });
     } catch (e) {
-        log.error('Error running tests:', e);
+        log.error('Error running tests:', { error: e instanceof Error ? e.message : String(e) });
         throw e;
     }
 }
@@ -124,33 +122,32 @@ function updateConfig(args: {
     // Store video files if they exist
     try {
         const videoDir = path.join(__dirname, 'videos');
-        log.info('Checking for videos in:', videoDir);
+        log.info('Checking for videos in directory', { videoDir });
         
         if (fs.existsSync(videoDir)) {
             const files = fs.readdirSync(videoDir);
-            log.info(`Found ${files.length} video files`);
+            log.info('Found video files', { count: files.length });
             
             for (const file of files) {
                 if (file.endsWith('.webm')) {
                     const videoPath = path.join(videoDir, file);
-                    log.info('Reading video file:', videoPath);
+                    log.info('Processing video file', { path: videoPath });
                     
                     const videoBuffer = fs.readFileSync(videoPath);
                     const key = `video-${Date.now()}-${file}`;
                     
-                    log.info(`Uploading video with key: ${key}`);
+                    log.info('Uploading video', { key });
                     await kvs.setValue(key, videoBuffer, { 
-                        contentType: 'video/webm',
-                        fileName: file
+                        contentType: 'video/webm'
                     });
-                    log.info(`Successfully uploaded video: ${key}`);
+                    log.info('Successfully uploaded video', { key });
                 }
             }
         } else {
-            log.warning('Video directory not found:', videoDir);
+            log.warning('Video directory not found', { path: videoDir });
         }
     } catch (error) {
-        log.error('Error handling video files:', error);
+        log.error('Error handling video files', { error: error instanceof Error ? error.message : String(error) });
     }
 
     const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
