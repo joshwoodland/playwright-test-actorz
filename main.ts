@@ -114,15 +114,35 @@ function updateConfig(args: {
     await kvs.setValue('report', fs.readFileSync(path.join(__dirname, 'playwright-report', 'index.html'), { encoding: 'utf-8' }), { contentType: 'text/html' });
 
     // Store video files if they exist
-    const videoDir = path.join(__dirname, 'videos');
-    if (fs.existsSync(videoDir)) {
-        const files = fs.readdirSync(videoDir);
-        for (const file of files) {
-            const videoPath = path.join(videoDir, file);
-            const videoBuffer = fs.readFileSync(videoPath);
-            await kvs.setValue(`video-${file}`, videoBuffer, { contentType: 'video/webm' });
-            log.info(`Video saved: video-${file}`);
+    try {
+        const videoDir = path.join(__dirname, 'videos');
+        log.info('Checking for videos in:', videoDir);
+        
+        if (fs.existsSync(videoDir)) {
+            const files = fs.readdirSync(videoDir);
+            log.info(`Found ${files.length} video files`);
+            
+            for (const file of files) {
+                if (file.endsWith('.webm')) {
+                    const videoPath = path.join(videoDir, file);
+                    log.info('Reading video file:', videoPath);
+                    
+                    const videoBuffer = fs.readFileSync(videoPath);
+                    const key = `video-${Date.now()}-${file}`;
+                    
+                    log.info(`Uploading video with key: ${key}`);
+                    await kvs.setValue(key, videoBuffer, { 
+                        contentType: 'video/webm',
+                        fileName: file
+                    });
+                    log.info(`Successfully uploaded video: ${key}`);
+                }
+            }
+        } else {
+            log.warning('Video directory not found:', videoDir);
         }
+    } catch (error) {
+        log.error('Error handling video files:', error);
     }
 
     const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
