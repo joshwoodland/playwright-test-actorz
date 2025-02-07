@@ -82,18 +82,33 @@ test('Patient appointment verification', async ({ page }) => {
 
         // 🔐 1. Log in
         console.log('🔑 Attempting login...');
-        await page.goto('https://www.simplepractice.com');
-        await page.click('text=Sign In');
+        await page.goto('https://www.simplepractice.com', { waitUntil: 'networkidle' });
+        console.log('✅ Page loaded');
         
-        // Use credentials from environment variables
-        await page.getByLabel('Email').click();
-        await page.getByLabel('Email').fill(email);
-        await page.getByLabel('Password').click();
-        await page.getByLabel('Password').fill(password);
-        await page.getByRole('button', { name: 'Sign in' }).click();
+        // Wait for and click sign in button
+        const signInButton = page.getByRole('link', { name: 'Sign In' });
+        await signInButton.waitFor({ state: 'visible', timeout: 30000 });
+        await signInButton.click();
+        console.log('✅ Clicked sign in button');
+        
+        // Wait for login form
+        const emailInput = page.getByLabel('Email');
+        const passwordInput = page.getByLabel('Password');
+        
+        await emailInput.waitFor({ state: 'visible', timeout: 30000 });
+        await passwordInput.waitFor({ state: 'visible', timeout: 30000 });
+        
+        // Fill in credentials
+        await emailInput.fill(email);
+        await passwordInput.fill(password);
+        
+        // Click login and wait for navigation
+        const loginButton = page.getByRole('button', { name: 'Sign in' });
+        await loginButton.waitFor({ state: 'visible', timeout: 30000 });
+        await loginButton.click();
         
         // Wait for login to complete
-        await page.waitForURL('https://secure.simplepractice.com/**');
+        await page.waitForURL('https://secure.simplepractice.com/**', { timeout: 60000 });
         console.log('✅ Login successful');
         
         // 🔍 2. Search for patient
