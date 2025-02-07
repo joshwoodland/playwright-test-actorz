@@ -1,0 +1,20 @@
+{
+  "name": "playwright-test",
+  "version": "1.0.0",
+  "description": "Playwright Test actor for Apify",
+  "main": "main.ts",
+  "scripts": {
+    "start": "ts-node main.ts",
+    "test": "npx playwright test",
+    "test:local": "npx playwright test tests/local.test.ts",
+    "test:debug": "npx playwright test --debug"
+  },
+  "dependencies": {
+    "@playwright/test": "1.30.0",
+    "@types/uuid": "9.0.1",
+    "apify": "3.1.2",
+    "dotenv": "16.4.7",
+    "ts-node": "10.9.1",
+    "uuid": "9.0.0"
+  }
+} 

@@ -1,2 +1,9 @@
 storage
 node_modules
+.env
+*.log
+
+# Local test files
+tests/local.test.ts
+tests/local.*.ts
+tests/*.local.ts
