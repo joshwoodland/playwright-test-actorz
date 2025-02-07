@@ -348,7 +348,19 @@ test('Patient appointment verification', async ({ page }) => {
                     await link.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await link.isVisible();
                     console.log('Link visible status:', isVisible);
-                    await link.click();
+                    const linkText = await link.textContent();
+                    console.log('Link text content:', linkText);
+                    if (!linkText?.includes(patientName)) {
+                        console.log('Link text does not match patient name');
+                        return false;
+                    }
+                    // Click with navigation verification
+                    console.log('Attempting to click link...');
+                    const [response] = await Promise.all([
+                        page.waitForNavigation({ timeout: 10000 }),
+                        link.click()
+                    ]);
+                    console.log('Navigation completed, new URL:', response?.url());
                     return true;
                 },
                 // Strategy 2: By text content
@@ -358,16 +370,28 @@ test('Patient appointment verification', async ({ page }) => {
                     await link.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await link.isVisible();
                     console.log('Link visible status:', isVisible);
+                    const linkText = await link.textContent();
+                    console.log('Link text content:', linkText);
+                    if (!linkText?.includes(patientName)) {
+                        console.log('Link text does not match patient name');
+                        return false;
+                    }
                     await link.click();
                     return true;
                 },
                 // Strategy 3: By partial match
                 async () => {
                     console.log('Trying patient link strategy 3: By partial match');
-                    const link = page.locator(\`a:has-text("\${patientName}")\`).first();
+                    const link = page.locator(`a:has-text("${patientName}")`).first();
                     await link.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await link.isVisible();
                     console.log('Link visible status:', isVisible);
+                    const linkText = await link.textContent();
+                    console.log('Link text content:', linkText);
+                    if (!linkText?.includes(patientName)) {
+                        console.log('Link text does not match patient name');
+                        return false;
+                    }
                     await link.click();
                     return true;
                 },
@@ -378,6 +402,12 @@ test('Patient appointment verification', async ({ page }) => {
                     await element.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await element.isVisible();
                     console.log('Element visible status:', isVisible);
+                    const elementText = await element.textContent();
+                    console.log('Element text content:', elementText);
+                    if (!elementText?.includes(patientName)) {
+                        console.log('Element text does not match patient name');
+                        return false;
+                    }
                     await element.click();
                     return true;
                 },
@@ -385,11 +415,17 @@ test('Patient appointment verification', async ({ page }) => {
                 async () => {
                     console.log('Trying patient link strategy 5: By fuzzy match');
                     const nameParts = patientName.split(' ');
-                    const fuzzySelector = nameParts.map(part => \`:has-text("\${part}")\`).join('');
-                    const element = page.locator(\`a\${fuzzySelector}\`).first();
+                    const fuzzySelector = nameParts.map(part => `:has-text("${part}")`).join('');
+                    const element = page.locator(`a${fuzzySelector}`).first();
                     await element.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await element.isVisible();
                     console.log('Element visible status:', isVisible);
+                    const elementText = await element.textContent();
+                    console.log('Element text content:', elementText);
+                    if (!elementText?.includes(patientName)) {
+                        console.log('Element text does not match patient name');
+                        return false;
+                    }
                     await element.click();
                     return true;
                 }
@@ -413,23 +449,51 @@ test('Patient appointment verification', async ({ page }) => {
         await findAndClickPatient();
         console.log('✅ Patient link clicked');
         
-        // Wait for patient page to load with enhanced logging
+        // Wait for patient page to load with enhanced verification
         console.log('Waiting for patient page to load...');
-        try {
-            await page.waitForLoadState('networkidle', { timeout: 30000 });
-            console.log('Network activity settled');
-        } catch (e) {
-            console.log('Network activity timeout, proceeding anyway');
+        
+        // Define success indicators for patient page load
+        const pageLoadStrategies = [
+            // Strategy 1: URL verification
+            async () => {
+                const currentUrl = page.url();
+                console.log('Current URL:', currentUrl);
+                if (currentUrl.includes('/clients/') && currentUrl.includes('/overview')) {
+                    return 'URL indicates patient page';
+                }
+                return false;
+            },
+            // Strategy 2: Quick check for any patient content
+            async () => {
+                const content = await page.content();
+                if (content.includes(patientName)) {
+                    return 'Patient name found in content';
+                }
+                return false;
+            }
+        ];
+
+        let pageLoadSuccess = false;
+        for (const strategy of pageLoadStrategies) {
+            try {
+                const result = await strategy();
+                if (result) {
+                    console.log('Page load verified:', result);
+                    pageLoadSuccess = true;
+                    break;
+                }
+            } catch (e) {
+                console.log('Page load check failed:', e.message);
+            }
         }
 
-        // Additional wait for page content to render
-        await page.waitForTimeout(2000);
-        console.log('Extra wait completed');
+        if (!pageLoadSuccess) {
+            console.log('⚠️ Could not verify patient page load');
+            console.log('Current page content:', await page.content());
+            throw new Error('Failed to verify patient page load');
+        }
 
-        // Verify we're on the correct page
-        const currentUrl = page.url();
-        console.log('Current URL:', currentUrl);
-        console.log('✅ Patient found');
+        console.log('✅ Patient page verified');
 
         // 📅 3. Find next appointment with multiple strategies
         console.log('🔍 Looking for next appointment...');
@@ -437,29 +501,58 @@ test('Patient appointment verification', async ({ page }) => {
             const strategies = [
                 // Strategy 1: By text content
                 async () => {
-                    const element = await page.getByText('next appt', { exact: false });
-                    return await element.textContent();
+                    console.log('Trying appointment strategy 1: By text content');
+                    const element = await page.getByText(/next appt|upcoming|scheduled/i, { exact: false });
+                    const text = await element.textContent();
+                    console.log('Found text:', text);
+                    return text;
                 },
                 // Strategy 2: By appointment section
                 async () => {
-                    const element = await page.locator('.appointments, [data-testid*="appointment"]').first();
-                    return await element.textContent();
+                    console.log('Trying appointment strategy 2: By appointment section');
+                    const element = await page.locator('[data-testid*="appointment"], [class*="appointment"], .appointments, #appointments').first();
+                    const text = await element.textContent();
+                    console.log('Found text:', text);
+                    return text;
                 },
                 // Strategy 3: By date pattern
                 async () => {
-                    const element = await page.locator('text=/\\d{2}\\/\\d{2}\\/\\d{4}/').first();
-                    return await element.textContent();
+                    console.log('Trying appointment strategy 3: By date pattern');
+                    const element = await page.locator('text=/[0-9]{2}\/[0-9]{2}\/[0-9]{4}/').first();
+                    const text = await element.textContent();
+                    console.log('Found text:', text);
+                    return text;
+                },
+                // Strategy 4: By calendar section
+                async () => {
+                    console.log('Trying appointment strategy 4: By calendar section');
+                    const element = await page.locator('[data-testid*="calendar"], [class*="calendar"], #calendar').first();
+                    const text = await element.textContent();
+                    console.log('Found text:', text);
+                    return text;
+                },
+                // Strategy 5: By overview section
+                async () => {
+                    console.log('Trying appointment strategy 5: By overview section');
+                    const element = await page.locator('.overview, #overview, [data-testid*="overview"]').first();
+                    const text = await element.textContent();
+                    console.log('Found text:', text);
+                    return text;
                 }
             ];
+
+            // Log the current page content for debugging
+            console.log('Current page content:', await page.content());
 
             for (const strategy of strategies) {
                 try {
                     const text = await strategy();
                     if (text) {
+                        console.log('Strategy succeeded with text:', text);
                         return text;
                     }
                 } catch (e) {
-                    console.log('Appointment search strategy failed, trying next one...');
+                    console.log('Appointment search strategy failed:', e.message);
                 }
             }
             console.log('⚠️ No future appointment found with any strategy');
@@ -467,8 +560,30 @@ test('Patient appointment verification', async ({ page }) => {
         }
 
         const nextApptText = await findNextAppointment();
-        const nextApptDate = nextApptText?.match(/\\d{2}\\/\\d{2}\\/\\d{4}/)?.[0];
+        console.log('Next appointment text found:', nextApptText);
+        
+        // Try to extract date with multiple patterns
+        let nextApptDate = null;
+        const datePatterns = [
+            /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/,
+            /[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}/,
+            /[0-9]{4}-[0-9]{2}-[0-9]{2}/,
+            /[A-Za-z]+ [0-9]{1,2},? [0-9]{4}/
+        ];
 
+        for (const pattern of datePatterns) {
+            const match = nextApptText?.match(pattern)?.[0];
+            if (match) {
+                console.log('Found date match:', match);
+                nextApptDate = match;
+                break;
+            }
+        }
+
+        if (!nextApptDate) {
+            console.log('⚠️ Could not extract date from text:', nextApptText);
+        }
+        
         // ⏰ 4. Calculate days and prepare message
         const today = new Date();
         let diffDays = 0;
