@@ -4,6 +4,20 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "email": {
+            "title": "Email",
+            "type": "string",
+            "description": "Email for login (can also be set via environment variables)",
+            "editor": "textfield",
+            "sectionCaption": "Login Credentials"
+        },
+        "password": {
+            "title": "Password",
+            "type": "string",
+            "description": "Password for login (can also be set via environment variables)",
+            "editor": "textfield",
+            "isSecret": true
+        },
         "apiEndpoint": {
             "title": "API Endpoint",
             "type": "string",
@@ -60,6 +74,14 @@
             "description": "Maximum runtime for the test suite (in seconds). Default is `60`.",
             "default": 60,
             "sectionCaption": "Advanced settings"
+        },
+        "memory": {
+            "title": "Memory (MB)",
+            "type": "integer",
+            "description": "Amount of memory in megabytes. Default is `8192` (8GB).",
+            "default": 8192,
+            "minimum": 4096,
+            "maximum": 32768
         },
         "video": {
             "title": "Record video",
