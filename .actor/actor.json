@@ -11,6 +11,7 @@
 		},
 		"run": {
 			"memoryMbytes": 8192,
+			"minMemoryMbytes": 4096,
 			"cpu": 2
 		}
 	},

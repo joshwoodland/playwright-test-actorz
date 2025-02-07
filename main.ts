@@ -32,12 +32,12 @@ export default defineConfig({
 
 function runTests(envVars: { [key: string]: string }) {
     try {
-        // Get credentials from Apify environment variables
-        const email = process.env.EMAIL;
-        const password = process.env.PASSWORD;
+        // Get credentials from environment variables or input
+        const email = process.env.EMAIL || envVars.EMAIL;
+        const password = process.env.PASSWORD || envVars.PASSWORD;
 
         if (!email || !password) {
-            throw new Error('EMAIL and PASSWORD environment variables must be set');
+            log.warning('No credentials found in environment variables, will try to use input values');
         }
 
         execSync(`npx playwright test --config=${__dirname}/playwright.config.ts`, {
@@ -46,7 +46,9 @@ function runTests(envVars: { [key: string]: string }) {
             stdio: 'inherit',
             env: {
                 ...process.env,
-                ...envVars
+                ...envVars,
+                EMAIL: email,
+                PASSWORD: password
             },
         });
     } catch (e) {
@@ -96,9 +98,10 @@ function updateConfig(args: {
     await Actor.init();
     const input = await Actor.getInput() as Dictionary;
 
-    // 📥 2. Get patient data dynamically
-    const patientName = (input['patientName'] as string) || 'Unknown Patient';
-    const medications = Array.isArray(input['medications']) ? input['medications'].join(', ') : '';
+    // Set memory if specified in input
+    if (input['memory']) {
+        await Actor.setMemoryMbytes(input['memory'] as number);
+    }
 
     storeTestCode({
         contents: input['testCode'] as string,
@@ -107,13 +110,13 @@ function updateConfig(args: {
 
     updateConfig(input);
 
-    // 🚀 3. Pass patient data + internal credentials to Playwright as ENV variables
+    // Pass all input values as environment variables
     runTests({
-        EMAIL: process.env.EMAIL || '',
-        PASSWORD: process.env.PASSWORD || '',
         API_ENDPOINT: input['apiEndpoint'] as string,
-        PATIENT_NAME: patientName,
-        MEDICATIONS: medications
+        EMAIL: input['email'] as string || '',
+        PASSWORD: input['password'] as string || '',
+        PATIENT_NAME: input['patientName'] as string || 'Unknown Patient',
+        MEDICATIONS: Array.isArray(input['medications']) ? input['medications'].join(', ') : ''
     });
 
     const kvs = await Actor.openKeyValueStore();
