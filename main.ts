@@ -1,4 +1,4 @@
-import { Actor } from 'apify';
+import { Actor, Configuration } from 'apify';
 import log from '@apify/log';
 import { Dictionary } from 'apify-client';
 import fs from 'fs';
@@ -26,6 +26,26 @@ interface ActorInput {
     video?: string;
 }
 
+// Log important environment variables at startup
+function logEnvironmentInfo() {
+    const envVars = {
+        actorId: process.env.ACTOR_ID,
+        runId: process.env.ACTOR_RUN_ID,
+        taskId: process.env.ACTOR_TASK_ID,
+        buildNumber: process.env.ACTOR_BUILD_NUMBER,
+        buildId: process.env.ACTOR_BUILD_ID,
+        defaultDatasetId: process.env.ACTOR_DEFAULT_DATASET_ID,
+        defaultKeyValueStoreId: process.env.ACTOR_DEFAULT_KEY_VALUE_STORE_ID,
+        memoryMbytes: process.env.ACTOR_MEMORY_MBYTES,
+        isAtHome: process.env.APIFY_IS_AT_HOME,
+        startedAt: process.env.ACTOR_STARTED_AT,
+        timeoutAt: process.env.ACTOR_TIMEOUT_AT,
+        containerUrl: process.env.ACTOR_WEB_SERVER_URL,
+    };
+
+    log.info('Actor environment:', envVars);
+}
+
 // Generate dynamic test code based on input parameters
 function generateTestCode(input: ActorInput): string {
     const { patientName = 'Default Patient', medications = [] } = input;
@@ -37,6 +57,10 @@ const PATIENT_NAME = '${patientName}';
 const MEDICATIONS = ${JSON.stringify(medications)};
 
 test('Dynamic patient data automation', async ({ page }) => {
+    // Log run context
+    console.log('Actor Run ID:', process.env.ACTOR_RUN_ID);
+    console.log('Task ID:', process.env.ACTOR_TASK_ID || 'No task (direct run)');
+    
     // 🔐 1. Log in
     await page.goto('https://www.simplepractice.com');
     await page.click('text=Sign In');
@@ -67,16 +91,19 @@ test('Dynamic patient data automation', async ({ page }) => {
         console.log('Verified medications:', MEDICATIONS);
     }
     
-    // 📸 5. Take evidence screenshots
+    // 📸 5. Take evidence screenshots with run ID in filename
+    const screenshotPath = \`patient-details-\${process.env.ACTOR_RUN_ID}.png\`;
     await page.screenshot({ 
-        path: 'patient-details.png',
+        path: screenshotPath,
         fullPage: true 
     });
     
-    // 📝 6. Log success
+    // 📝 6. Log success with run context
     console.log('Successfully verified patient:', {
         name: PATIENT_NAME,
-        medicationsCount: MEDICATIONS.length
+        medicationsCount: MEDICATIONS.length,
+        runId: process.env.ACTOR_RUN_ID,
+        taskId: process.env.ACTOR_TASK_ID
     });
 });`;
 }
@@ -173,17 +200,27 @@ function updateConfig(args: {
 (async () => {
     await Actor.init();
     
+    // Log environment information
+    logEnvironmentInfo();
+    
+    // Get the global configuration
+    const config = Configuration.getGlobalConfig();
+    
     // Get input with type safety
     const input = await Actor.getInput() as ActorInput;
     log.info('Received input parameters', {
         hasPatientName: !!input.patientName,
         hasMedications: !!input.medications,
         patientNameLength: input.patientName?.length,
-        medicationsCount: input.medications?.length
+        medicationsCount: input.medications?.length,
+        configuredMemory: config.get('memoryMbytes'),
+        isAtHome: config.get('isAtHome'),
+        defaultKeyValueStoreId: config.get('defaultKeyValueStoreId')
     });
 
-    // Set memory if specified in input
+    // Set memory if specified in input, using Configuration
     if (input.memory) {
+        config.set('memoryMbytes', input.memory);
         await Actor.setMemoryMbytes(input.memory);
     }
 
@@ -198,7 +235,7 @@ function updateConfig(args: {
     updateConfig({
         screenWidth: input.screenWidth,
         screenHeight: input.screenHeight,
-        headful: input.headful,
+        headful: input.headful || config.get('headless') === false,
         timeout: input.timeout,
         darkMode: input.darkMode,
         locale: input.locale,
@@ -212,7 +249,9 @@ function updateConfig(args: {
     log.info('Processing patient data', {
         patientName,
         medicationsCount: medications.length,
-        medications: medications
+        medications: medications,
+        runId: process.env.ACTOR_RUN_ID,
+        taskId: process.env.ACTOR_TASK_ID || 'No task (direct run)'
     });
 
     // Pass all input values as environment variables
@@ -220,7 +259,9 @@ function updateConfig(args: {
         EMAIL: input.email || '',
         PASSWORD: input.password || '',
         PATIENT_NAME: patientName,
-        MEDICATIONS: medications.join(', ')
+        MEDICATIONS: medications.join(', '),
+        ACTOR_RUN_ID: process.env.ACTOR_RUN_ID,
+        ACTOR_TASK_ID: process.env.ACTOR_TASK_ID
     });
 
     // Store video files if they exist
