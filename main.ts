@@ -382,7 +382,7 @@ test('Patient appointment verification', async ({ page }) => {
                 // Strategy 3: By partial match
                 async () => {
                     console.log('Trying patient link strategy 3: By partial match');
-                    const link = page.locator(`a:has-text("${patientName}")`).first();
+                    const link = page.getByRole('link').filter({ hasText: patientName }).first();
                     await link.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await link.isVisible();
                     console.log('Link visible status:', isVisible);
@@ -415,8 +415,7 @@ test('Patient appointment verification', async ({ page }) => {
                 async () => {
                     console.log('Trying patient link strategy 5: By fuzzy match');
                     const nameParts = patientName.split(' ');
-                    const fuzzySelector = nameParts.map(part => `:has-text("${part}")`).join('');
-                    const element = page.locator(`a${fuzzySelector}`).first();
+                    const element = page.getByRole('link').filter({ hasText: new RegExp(nameParts.join('.*'), 'i') }).first();
                     await element.waitFor({ state: 'visible', timeout: 5000 });
                     const isVisible = await element.isVisible();
                     console.log('Element visible status:', isVisible);
