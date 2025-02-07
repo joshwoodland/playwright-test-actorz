@@ -37,7 +37,7 @@ function runTests(envVars: { [key: string]: string }) {
         const password = process.env.PASSWORD || envVars.PASSWORD;
 
         if (!email || !password) {
-            log.warning('No credentials found in environment variables, will try to use input values');
+            log.warning('No credentials found in environment variables or input');
         }
 
         execSync(`npx playwright test --config=${__dirname}/playwright.config.ts`, {
@@ -47,8 +47,8 @@ function runTests(envVars: { [key: string]: string }) {
             env: {
                 ...process.env,
                 ...envVars,
-                EMAIL: email,
-                PASSWORD: password
+                EMAIL: email || '',  // Ensure we pass empty string rather than undefined
+                PASSWORD: password || ''
             },
         });
     } catch (e) {
@@ -112,7 +112,7 @@ function updateConfig(args: {
 
     // Pass all input values as environment variables
     runTests({
-        API_ENDPOINT: input['apiEndpoint'] as string,
+        API_ENDPOINT: input['apiEndpoint'] as string || '',
         EMAIL: input['email'] as string || '',
         PASSWORD: input['password'] as string || '',
         PATIENT_NAME: input['patientName'] as string || 'Unknown Patient',
