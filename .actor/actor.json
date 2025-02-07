@@ -15,20 +15,8 @@
 		}
 	},
 	"environmentVariables": {
-		"EMAIL": {
-			"name": "Email",
-			"description": "Email address for login",
-			"type": "string",
-			"required": true,
-			"secret": true
-		},
-		"PASSWORD": {
-			"name": "Password",
-			"description": "Password for login",
-			"type": "string",
-			"required": true,
-			"secret": true
-		}
+		"EMAIL": "",
+		"PASSWORD": ""
 	},
 	"storages": {
         "dataset": "./OUTPUT_SCHEMA.json"
