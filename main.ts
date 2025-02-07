@@ -51,94 +51,121 @@ function generateTestCode(input: ActorInput): string {
     const { patientName = 'Default Patient', medications = [] } = input;
     
     return `import { test, expect } from '@playwright/test';
+import { v4 as uuidv4 } from 'uuid';
 
-test('Dynamic patient data automation', async ({ page, context }) => {
+test('Patient appointment verification', async ({ page }) => {
     try {
+        // Get environment variables
+        const email = process.env.EMAIL;
+        const password = process.env.PASSWORD;
+        const patientName = process.env.PATIENT_NAME;
+        const medications = process.env.MEDICATIONS?.split(',').map(med => med.trim()) || [];
+
+        if (!email || !password || !patientName || medications.length === 0) {
+            throw new Error('Missing required environment variables: EMAIL, PASSWORD, PATIENT_NAME, MEDICATIONS');
+        }
+
         // 📋 Log test start
-        console.log('🚀 Starting test automation for:', {
-            patient: '${patientName}',
-            medications: ${JSON.stringify(medications)},
-            runId: process.env.ACTOR_RUN_ID
-        });
+        console.log('🚀 Starting test automation');
 
         // 🔐 1. Log in
         console.log('🔑 Attempting login...');
         await page.goto('https://www.simplepractice.com');
         await page.click('text=Sign In');
         
-        // Use environment variables for credentials
-        await page.fill('input[name="email"]', process.env.EMAIL);
-        await page.fill('input[name="password"]', process.env.PASSWORD);
-        await page.click('button[type="submit"]');
+        // Use credentials from environment variables
+        await page.getByLabel('Email').click();
+        await page.getByLabel('Email').fill(email);
+        await page.getByLabel('Password').click();
+        await page.getByLabel('Password').fill(password);
+        await page.getByRole('button', { name: 'Sign in' }).click();
         
         // Wait for login to complete
         await page.waitForURL('https://secure.simplepractice.com/**');
         console.log('✅ Login successful');
-        await page.screenshot({ path: 'login-success.png' });
         
         // 🔍 2. Search for patient
-        console.log('🔎 Searching for patient:', process.env.PATIENT_NAME);
-        await page.getByPlaceholder('Search').fill(process.env.PATIENT_NAME);
-        await page.getByRole('link', { name: process.env.PATIENT_NAME }).click();
+        console.log('🔎 Searching for patient:', patientName);
+        await page.getByPlaceholder('Search').fill(patientName);
+        await page.keyboard.press('Enter');
+        await page.getByRole('link', { name: patientName }).click();
+        
+        // Wait for patient page to load
+        await page.waitForLoadState('networkidle');
         console.log('✅ Patient found');
-        await page.screenshot({ path: 'patient-found.png' });
-        
-        // ✅ 3. Verify patient details
-        console.log('🔍 Verifying patient details...');
-        await expect(page.locator('.patient-name')).toHaveText(process.env.PATIENT_NAME);
-        console.log('✅ Patient details verified');
-        
-        // 💊 4. Check medications
-        const medications = process.env.MEDICATIONS.split(', ');
-        if (medications.length > 0) {
-            console.log('💊 Checking medications:', medications);
-            const medicationsList = page.locator('.medications-list');
-            for (const medication of medications) {
-                try {
-                    await expect(medicationsList).toContainText(medication);
-                    console.log('✅ Verified medication:', medication);
-                } catch (error) {
-                    console.error('❌ Failed to verify medication:', medication);
-                    await context.saveSnapshot();
-                    throw error;
-                }
-            }
-            console.log('✅ All medications verified');
+
+        // 📅 3. Find next appointment
+        console.log('🔍 Looking for next appointment...');
+        const nextApptElement = await page.getByText('next appt', { exact: false });
+        const nextApptText = await nextApptElement.textContent();
+        const nextApptDate = nextApptText?.match(/\\d{2}\\/\\d{2}\\/\\d{4}/)?.[0];
+
+        // ⏰ 4. Calculate days and prepare message
+        const today = new Date();
+        let diffDays = 0;
+        let appointmentMessage = '';
+
+        if (nextApptDate) {
+            const apptDate = new Date(nextApptDate);
+            const diffTime = Math.abs(apptDate.getTime() - today.getTime());
+            diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            appointmentMessage = \`📅 NEXT APPOINTMENT: \${nextApptDate}\\n❓ Would you like me to proceed with a \${diffDays + 5}-day supply for the patient?\`;
+        } else {
+            console.log('⚠️ No future appointment found');
+            appointmentMessage = \`⚠️ NO FUTURE APPOINTMENT SCHEDULED\\n❓ How would you like to proceed with this patient's medication refill?\`;
         }
         
-        // 📸 5. Take evidence screenshots
-        console.log('📸 Taking final screenshots...');
+        // 📝 5. Generate webhook message
+        const requestId = uuidv4().substring(0, 9);
+        const currentTime = today.toLocaleString('en-US');
+        
+        const message = \`📋 MEDICATION REFILL REQUEST
+
+👤 PATIENT NAME: \${patientName}
+💊 MEDICATIONS: \${medications.join(', ').toLowerCase()}
+⏰ CALCULATED AT: \${currentTime}
+🔍 REQUEST ID: \${requestId}
+
+\${appointmentMessage}\`;
+
+        console.log('\\nGenerated Webhook Message:');
+        console.log(message);
+
+        // 📤 6. Send webhook
+        console.log('📤 Sending webhook message...');
+        const webhookUrl = 'https://woodlandpsychiatry.app.n8n.cloud/webhook/SendMedication';
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+            throw new Error(\`Webhook failed: \${response.status} \${response.statusText}\`);
+        }
+
+        console.log('✅ Webhook sent successfully');
+
+        // 📸 7. Take evidence screenshots
         await page.screenshot({ 
-            path: \`patient-details-\${process.env.ACTOR_RUN_ID}.png\`,
+            path: \`patient-details-\${process.env.ACTOR_RUN_ID || 'test'}.png\`,
             fullPage: true 
         });
         
-        // 🎥 6. Ensure video is saved
-        console.log('🎥 Video recording will be saved in:', {
-            directory: 'videos',
-            runId: process.env.ACTOR_RUN_ID
-        });
-        
-        // 📝 7. Log final success
-        console.log('🎉 Test completed successfully:', {
-            name: process.env.PATIENT_NAME,
-            medicationsCount: medications.length,
-            runId: process.env.ACTOR_RUN_ID,
-            taskId: process.env.ACTOR_TASK_ID
-        });
+        // ✅ 8. Log success
+        console.log('🎉 Test completed successfully');
 
     } catch (error) {
         // 🚨 Error handling
         console.error('❌ Test failed:', {
             error: error.message,
-            step: error.name,
-            runId: process.env.ACTOR_RUN_ID
+            step: error.name
         });
         
-        // Save error state screenshot
-        await context.saveSnapshot();
         await page.screenshot({ 
-            path: \`error-state-\${process.env.ACTOR_RUN_ID}.png\`,
+            path: \`error-state-\${process.env.ACTOR_RUN_ID || 'test'}.png\`,
             fullPage: true 
         });
         

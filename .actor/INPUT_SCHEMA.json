@@ -18,21 +18,19 @@
             "editor": "textfield",
             "isSecret": true
         },
-        "apiEndpoint": {
-            "title": "API Endpoint",
+        "patientName": {
+            "title": "Patient Name",
             "type": "string",
-            "description": "The HTTP endpoint to fetch patient data from",
+            "description": "The name of the patient to process.",
             "editor": "textfield",
-            "default": "https://your-api.com/patients",
-            "sectionCaption": "API Configuration"
+            "sectionCaption": "Patient Information"
         },
-        "testCode": {
-            "title": "Test suite code",
-            "type": "string",
-            "description": "Contents of the test suite file. Environment variables EMAIL, PASSWORD, API_ENDPOINT are available during the run.",
-            "editor": "javascript",
-            "prefill": "import { test, expect } from '@playwright/test';\n\nasync function getPatientData() {\n    const response = await fetch(process.env.API_ENDPOINT);\n    if (!response.ok) {\n        throw new Error(`HTTP error! status: ${response.status}`);\n    }\n    return await response.json();\n}\n\ntest('Dynamic patient data automation', async ({ page }) => {\n    // 📥 1. Get dynamic data from API\n    const patientData = await getPatientData();\n    console.log('Patient data received:', patientData);\n\n    // 🔐 2. Log in\n    await page.goto('https://www.simplepractice.com');\n    await page.click('text=Sign In');\n    await page.fill('input[name=\"email\"]', process.env.EMAIL);\n    await page.fill('input[name=\"password\"]', process.env.PASSWORD);\n    await page.click('button[type=\"submit\"]');\n\n    // ✅ 3. Use dynamic patient data\n    await page.goto(`https://secure.simplepractice.com/patients/${patientData.patientId}`);\n    \n    // Verify patient name\n    await expect(page.locator('.patient-name')).toHaveText(patientData.name);\n\n    // Check medications\n    if (patientData.medications && patientData.medications.length > 0) {\n        for (const med of patientData.medications) {\n            await expect(page.locator('.medications-list')).toContainText(med);\n        }\n    }\n\n    // 📸 4. Take evidence screenshots\n    await page.screenshot({ path: 'patient-details.png' });\n});",
-            "sectionCaption": "Basic settings"
+        "medications": {
+            "title": "Medications",
+            "type": "array",
+            "description": "A list of medications prescribed to the patient.",
+            "editor": "stringList",
+            "prefill": []
         },
         "screenWidth": {
             "title": "Screen width",
@@ -90,20 +88,7 @@
             "default": "on",
             "enumTitles": ["Always", "Never", "Retain on failure", "On first retry"],
             "description": "Record video of the test run."
-        },
-        "patientName": {
-            "title": "Patient Name",
-            "type": "string",
-            "description": "The name of the patient to process.",
-            "editor": "textfield"
-        },
-        "medications": {
-            "title": "Medications",
-            "type": "array",
-            "description": "A list of medications prescribed to the patient.",
-            "editor": "stringList",
-            "prefill": []
         }
     },
-    "required": ["apiEndpoint"]
+    "required": ["email", "password", "patientName", "medications"]
 }
