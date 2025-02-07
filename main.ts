@@ -218,10 +218,9 @@ function updateConfig(args: {
         defaultKeyValueStoreId: config.get('defaultKeyValueStoreId')
     });
 
-    // Set memory if specified in input, using Configuration
+    // Set memory using Configuration
     if (input.memory) {
         config.set('memoryMbytes', input.memory);
-        await Actor.setMemoryMbytes(input.memory);
     }
 
     // Generate and store dynamic test code
@@ -246,12 +245,16 @@ function updateConfig(args: {
     const patientName = input.patientName || 'Default Patient';
     const medications = Array.isArray(input.medications) ? input.medications : [];
     
+    // Get run context with fallbacks
+    const runId = process.env.ACTOR_RUN_ID || 'local-run';
+    const taskId = process.env.ACTOR_TASK_ID || 'no-task';
+    
     log.info('Processing patient data', {
         patientName,
         medicationsCount: medications.length,
         medications: medications,
-        runId: process.env.ACTOR_RUN_ID,
-        taskId: process.env.ACTOR_TASK_ID || 'No task (direct run)'
+        runId,
+        taskId
     });
 
     // Pass all input values as environment variables
@@ -260,8 +263,8 @@ function updateConfig(args: {
         PASSWORD: input.password || '',
         PATIENT_NAME: patientName,
         MEDICATIONS: medications.join(', '),
-        ACTOR_RUN_ID: process.env.ACTOR_RUN_ID,
-        ACTOR_TASK_ID: process.env.ACTOR_TASK_ID
+        ACTOR_RUN_ID: runId,
+        ACTOR_TASK_ID: taskId
     });
 
     // Store video files if they exist
@@ -316,7 +319,7 @@ function updateConfig(args: {
         }
 
         // Process other attachments
-        const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
+        const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8 }));
         const attachmentPaths = collectAttachmentPaths(jsonReport);
 
         const attachmentLinks = await Promise.all(attachmentPaths.map(async (attachment: Attachment) => {
