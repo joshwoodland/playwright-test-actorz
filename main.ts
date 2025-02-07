@@ -16,7 +16,6 @@ interface ActorInput {
     email?: string;
     password?: string;
     apiEndpoint?: string;
-    testCode?: string;
     memory?: number;
     screenWidth?: number;
     screenHeight?: number;
@@ -27,6 +26,62 @@ interface ActorInput {
     video?: string;
 }
 
+// Generate dynamic test code based on input parameters
+function generateTestCode(input: ActorInput): string {
+    const { patientName = 'Default Patient', medications = [] } = input;
+    
+    return `import { test, expect } from '@playwright/test';
+
+// Test data from HTTP query parameters
+const PATIENT_NAME = '${patientName}';
+const MEDICATIONS = ${JSON.stringify(medications)};
+
+test('Dynamic patient data automation', async ({ page }) => {
+    // 🔐 1. Log in
+    await page.goto('https://www.simplepractice.com');
+    await page.click('text=Sign In');
+    
+    // Use environment variables for credentials
+    await page.fill('input[name="email"]', process.env.EMAIL);
+    await page.fill('input[name="password"]', process.env.PASSWORD);
+    await page.click('button[type="submit"]');
+    
+    // Wait for login to complete
+    await page.waitForURL('https://secure.simplepractice.com/**');
+    
+    // 🔍 2. Search for patient
+    await page.getByPlaceholder('Search').fill(PATIENT_NAME);
+    await page.getByRole('link', { name: PATIENT_NAME }).click();
+    
+    // ✅ 3. Verify patient details
+    await expect(page.locator('.patient-name')).toHaveText(PATIENT_NAME);
+    
+    // 💊 4. Check medications
+    if (MEDICATIONS.length > 0) {
+        const medicationsList = page.locator('.medications-list');
+        for (const medication of MEDICATIONS) {
+            await expect(medicationsList).toContainText(medication);
+        }
+        
+        // Log medications found
+        console.log('Verified medications:', MEDICATIONS);
+    }
+    
+    // 📸 5. Take evidence screenshots
+    await page.screenshot({ 
+        path: 'patient-details.png',
+        fullPage: true 
+    });
+    
+    // 📝 6. Log success
+    console.log('Successfully verified patient:', {
+        name: PATIENT_NAME,
+        medicationsCount: MEDICATIONS.length
+    });
+});`;
+}
+
+// Generate Playwright configuration
 const getConfig = (options: { screen: { width: number, height: number }, headful: boolean, timeout: number, locale: string, darkMode: boolean, ignoreHTTPSErrors: boolean, video: string }) => {
     const { screen, headful, timeout, ignoreHTTPSErrors, darkMode, locale, video } = options;
 
@@ -132,13 +187,12 @@ function updateConfig(args: {
         await Actor.setMemoryMbytes(input.memory);
     }
 
-    // Store test code if provided
-    if (input.testCode) {
-        storeTestCode({
-            contents: input.testCode,
-            path: path.join(__dirname, 'tests', 'test.spec.ts')
-        });
-    }
+    // Generate and store dynamic test code
+    const dynamicTestCode = generateTestCode(input);
+    storeTestCode({
+        contents: dynamicTestCode,
+        path: path.join(__dirname, 'tests', 'test.spec.ts')
+    });
 
     // Update configuration with input parameters
     updateConfig({
@@ -163,7 +217,6 @@ function updateConfig(args: {
 
     // Pass all input values as environment variables
     runTests({
-        API_ENDPOINT: input.apiEndpoint || '',
         EMAIL: input.email || '',
         PASSWORD: input.password || '',
         PATIENT_NAME: patientName,
