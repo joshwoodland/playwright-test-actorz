@@ -12,8 +12,11 @@ RUN npm ci
 # Copy source files
 COPY . .
 
+# Build TypeScript files
+RUN npm run build
+
 # Set the user to non-root
 USER pwuser
 
 # Command to run the actor
-CMD ["npm", "start"]
+CMD ["npm", "start"] 
