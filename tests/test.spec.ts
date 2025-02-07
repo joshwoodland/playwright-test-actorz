@@ -4,8 +4,6 @@ test('Dynamic patient data automation', async ({ page }) => {
     // 📥 1. Access environment variables
     const email = process.env.EMAIL;
     const password = process.env.PASSWORD;
-    const patientName = process.env.PATIENT_NAME;
-    const medications = process.env.MEDICATIONS;
 
     // 🔐 2. Log in
     await page.goto('https://www.simplepractice.com');

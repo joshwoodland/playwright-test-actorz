@@ -16,7 +16,9 @@ COPY . .
 RUN mkdir -p test-results && \
     mkdir -p playwright-report && \
     mkdir -p test-results/.playwright-artifacts-0 && \
-    chown -R pwuser:pwuser /usr/src/app
+    mkdir -p videos && \
+    chown -R pwuser:pwuser /usr/src/app && \
+    chmod -R 777 /usr/src/app/videos
 
 # Set the user to non-root
 USER pwuser

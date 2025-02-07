@@ -22,7 +22,10 @@ export default defineConfig({
         ignoreHTTPSErrors: ${ignoreHTTPSErrors},
         colorScheme: '${darkMode ? 'dark' : 'light'}',
         locale: '${locale}',
-        video: '${video}',
+        video: {
+            mode: '${video}',
+            dir: 'videos'
+        },
     },
     reporter: [
         ['html', { open: 'never' }],
@@ -109,6 +112,18 @@ function updateConfig(args: {
 
     const kvs = await Actor.openKeyValueStore();
     await kvs.setValue('report', fs.readFileSync(path.join(__dirname, 'playwright-report', 'index.html'), { encoding: 'utf-8' }), { contentType: 'text/html' });
+
+    // Store video files if they exist
+    const videoDir = path.join(__dirname, 'videos');
+    if (fs.existsSync(videoDir)) {
+        const files = fs.readdirSync(videoDir);
+        for (const file of files) {
+            const videoPath = path.join(videoDir, file);
+            const videoBuffer = fs.readFileSync(videoPath);
+            await kvs.setValue(`video-${file}`, videoBuffer, { contentType: 'video/webm' });
+            log.info(`Video saved: video-${file}`);
+        }
+    }
 
     const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
     const attachmentPaths = collectAttachmentPaths(jsonReport);
