@@ -70,11 +70,9 @@
         "medications": {
             "title": "Medications",
             "type": "array",
-            "items": {
-                "type": "string"
-            },
             "description": "A list of medications prescribed to the patient.",
-            "editor": "textfield"
+            "editor": "stringList",
+            "prefill": []
         }
     },
     "required": ["testCode"]
