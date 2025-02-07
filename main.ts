@@ -6,10 +6,6 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { collectAttachmentPaths, transformToTabular, Attachment } from './transform';
 
-// 🔐 1. Internal credentials (hardcoded)
-const EMAIL = 'smartwoodland@gmail.com';
-const PASSWORD = 'Mentalhealthsdf245';
-
 const getConfig = (options: { screen: { width: number, height: number }, headful: boolean, timeout: number, locale: string, darkMode: boolean, ignoreHTTPSErrors: boolean, video: string }) => {
     const { screen, headful, timeout, ignoreHTTPSErrors, darkMode, locale, video } = options;
 
@@ -36,17 +32,28 @@ export default defineConfig({
 
 function runTests(envVars: { [key: string]: string }) {
     try {
+        // Get credentials from Apify environment variables
+        const email = process.env.EMAIL;
+        const password = process.env.PASSWORD;
+
+        if (!email || !password) {
+            throw new Error('EMAIL and PASSWORD environment variables must be set');
+        }
+
         execSync(`npx playwright test --config=${__dirname}/playwright.config.ts`, {
             cwd: __dirname,
             encoding: 'utf8',
             stdio: 'inherit',
             env: {
                 ...process.env,
-                ...envVars, // Pass environment variables to Playwright
+                ...envVars,
+                EMAIL: email,
+                PASSWORD: password
             },
         });
     } catch (e) {
-        // suppress error, the report will be generated anyway
+        log.error('Error running tests:', e);
+        throw e;
     }
 }
 
