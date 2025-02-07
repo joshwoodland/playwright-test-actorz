@@ -64,7 +64,8 @@
         "patientName": {
             "title": "Patient Name",
             "type": "string",
-            "description": "The name of the patient to process."
+            "description": "The name of the patient to process.",
+            "editor": "textfield"
         },
         "medications": {
             "title": "Medications",
@@ -72,7 +73,8 @@
             "items": {
                 "type": "string"
             },
-            "description": "A list of medications prescribed to the patient."
+            "description": "A list of medications prescribed to the patient.",
+            "editor": "textfield"
         }
     },
     "required": ["testCode"]
