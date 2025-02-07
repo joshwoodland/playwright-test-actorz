@@ -115,7 +115,7 @@ test('Patient appointment verification', async ({ page }) => {
             appointmentMessage = \`⚠️ NO FUTURE APPOINTMENT SCHEDULED\\n❓ How would you like to proceed with this patient's medication refill?\`;
         }
         
-        // 📝 5. Generate webhook message
+        // 📝 5. Generate message
         const requestId = uuidv4().substring(0, 9);
         const currentTime = today.toLocaleString('en-US');
         
@@ -128,25 +128,19 @@ test('Patient appointment verification', async ({ page }) => {
 
 \${appointmentMessage}\`;
 
-        console.log('\\nGenerated Webhook Message:');
-        console.log(message);
+        // 📊 6. Store data for dataset
+        const testResults = {
+            patientName,
+            medications: medications.join(', ').toLowerCase(),
+            nextAppointment: nextApptDate || null,
+            requestId,
+            calculatedAt: currentTime,
+            message
+        };
 
-        // 📤 6. Send webhook
-        console.log('📤 Sending webhook message...');
-        const webhookUrl = 'https://woodlandpsychiatry.app.n8n.cloud/webhook/SendMedication';
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message })
-        });
-
-        if (!response.ok) {
-            throw new Error(\`Webhook failed: \${response.status} \${response.statusText}\`);
-        }
-
-        console.log('✅ Webhook sent successfully');
+        // Store in global object for main process to handle
+        global.__TEST_RESULTS__ = testResults;
+        console.log('✅ Data collected for dataset');
 
         // 📸 7. Take evidence screenshots
         await page.screenshot({ 
@@ -323,7 +317,7 @@ function updateConfig(args: {
         taskId
     });
 
-    // Pass all input values as environment variables
+    // Run tests and collect results
     runTests({
         EMAIL: input.email || '',
         PASSWORD: input.password || '',
@@ -332,6 +326,13 @@ function updateConfig(args: {
         ACTOR_RUN_ID: runId,
         ACTOR_TASK_ID: taskId
     });
+
+    // Store test results in dataset if available
+    if (global.__TEST_RESULTS__) {
+        const dataset = await Actor.openDataset();
+        await dataset.pushData(global.__TEST_RESULTS__);
+        log.info('Test results stored in dataset');
+    }
 
     // Store video files if they exist
     try {
