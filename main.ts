@@ -52,59 +52,98 @@ function generateTestCode(input: ActorInput): string {
     
     return `import { test, expect } from '@playwright/test';
 
-// Test data from HTTP query parameters
-const PATIENT_NAME = '${patientName}';
-const MEDICATIONS = ${JSON.stringify(medications)};
+test('Dynamic patient data automation', async ({ page, context }) => {
+    try {
+        // 📋 Log test start
+        console.log('🚀 Starting test automation for:', {
+            patient: '${patientName}',
+            medications: ${JSON.stringify(medications)},
+            runId: process.env.ACTOR_RUN_ID
+        });
 
-test('Dynamic patient data automation', async ({ page }) => {
-    // Log run context
-    console.log('Actor Run ID:', process.env.ACTOR_RUN_ID);
-    console.log('Task ID:', process.env.ACTOR_TASK_ID || 'No task (direct run)');
-    
-    // 🔐 1. Log in
-    await page.goto('https://www.simplepractice.com');
-    await page.click('text=Sign In');
-    
-    // Use environment variables for credentials
-    await page.fill('input[name="email"]', process.env.EMAIL);
-    await page.fill('input[name="password"]', process.env.PASSWORD);
-    await page.click('button[type="submit"]');
-    
-    // Wait for login to complete
-    await page.waitForURL('https://secure.simplepractice.com/**');
-    
-    // 🔍 2. Search for patient
-    await page.getByPlaceholder('Search').fill(PATIENT_NAME);
-    await page.getByRole('link', { name: PATIENT_NAME }).click();
-    
-    // ✅ 3. Verify patient details
-    await expect(page.locator('.patient-name')).toHaveText(PATIENT_NAME);
-    
-    // 💊 4. Check medications
-    if (MEDICATIONS.length > 0) {
-        const medicationsList = page.locator('.medications-list');
-        for (const medication of MEDICATIONS) {
-            await expect(medicationsList).toContainText(medication);
+        // 🔐 1. Log in
+        console.log('🔑 Attempting login...');
+        await page.goto('https://www.simplepractice.com');
+        await page.click('text=Sign In');
+        
+        // Use environment variables for credentials
+        await page.fill('input[name="email"]', process.env.EMAIL);
+        await page.fill('input[name="password"]', process.env.PASSWORD);
+        await page.click('button[type="submit"]');
+        
+        // Wait for login to complete
+        await page.waitForURL('https://secure.simplepractice.com/**');
+        console.log('✅ Login successful');
+        await page.screenshot({ path: 'login-success.png' });
+        
+        // 🔍 2. Search for patient
+        console.log('🔎 Searching for patient:', process.env.PATIENT_NAME);
+        await page.getByPlaceholder('Search').fill(process.env.PATIENT_NAME);
+        await page.getByRole('link', { name: process.env.PATIENT_NAME }).click();
+        console.log('✅ Patient found');
+        await page.screenshot({ path: 'patient-found.png' });
+        
+        // ✅ 3. Verify patient details
+        console.log('🔍 Verifying patient details...');
+        await expect(page.locator('.patient-name')).toHaveText(process.env.PATIENT_NAME);
+        console.log('✅ Patient details verified');
+        
+        // 💊 4. Check medications
+        const medications = process.env.MEDICATIONS.split(', ');
+        if (medications.length > 0) {
+            console.log('💊 Checking medications:', medications);
+            const medicationsList = page.locator('.medications-list');
+            for (const medication of medications) {
+                try {
+                    await expect(medicationsList).toContainText(medication);
+                    console.log('✅ Verified medication:', medication);
+                } catch (error) {
+                    console.error('❌ Failed to verify medication:', medication);
+                    await context.saveSnapshot();
+                    throw error;
+                }
+            }
+            console.log('✅ All medications verified');
         }
         
-        // Log medications found
-        console.log('Verified medications:', MEDICATIONS);
+        // 📸 5. Take evidence screenshots
+        console.log('📸 Taking final screenshots...');
+        await page.screenshot({ 
+            path: \`patient-details-\${process.env.ACTOR_RUN_ID}.png\`,
+            fullPage: true 
+        });
+        
+        // 🎥 6. Ensure video is saved
+        console.log('🎥 Video recording will be saved in:', {
+            directory: 'videos',
+            runId: process.env.ACTOR_RUN_ID
+        });
+        
+        // 📝 7. Log final success
+        console.log('🎉 Test completed successfully:', {
+            name: process.env.PATIENT_NAME,
+            medicationsCount: medications.length,
+            runId: process.env.ACTOR_RUN_ID,
+            taskId: process.env.ACTOR_TASK_ID
+        });
+
+    } catch (error) {
+        // 🚨 Error handling
+        console.error('❌ Test failed:', {
+            error: error.message,
+            step: error.name,
+            runId: process.env.ACTOR_RUN_ID
+        });
+        
+        // Save error state screenshot
+        await context.saveSnapshot();
+        await page.screenshot({ 
+            path: \`error-state-\${process.env.ACTOR_RUN_ID}.png\`,
+            fullPage: true 
+        });
+        
+        throw error;
     }
-    
-    // 📸 5. Take evidence screenshots with run ID in filename
-    const screenshotPath = \`patient-details-\${process.env.ACTOR_RUN_ID}.png\`;
-    await page.screenshot({ 
-        path: screenshotPath,
-        fullPage: true 
-    });
-    
-    // 📝 6. Log success with run context
-    console.log('Successfully verified patient:', {
-        name: PATIENT_NAME,
-        medicationsCount: MEDICATIONS.length,
-        runId: process.env.ACTOR_RUN_ID,
-        taskId: process.env.ACTOR_TASK_ID
-    });
 });`;
 }
 
