@@ -6,6 +6,9 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { collectAttachmentPaths, transformToTabular, Attachment } from './transform';
 
+// Define constant for video directory path
+const VIDEO_DIR = path.join(__dirname, 'videos');
+
 const getConfig = (options: { screen: { width: number, height: number }, headful: boolean, timeout: number, locale: string, darkMode: boolean, ignoreHTTPSErrors: boolean, video: string }) => {
     const { screen, headful, timeout, ignoreHTTPSErrors, darkMode, locale, video } = options;
 
@@ -79,7 +82,7 @@ function updateConfig(args: {
         darkMode = false,
         locale = 'en-US',
         ignoreHTTPSErrors = true,
-        video = 'off'
+        video = 'on'
     } = args;
 
     const config = getConfig({
@@ -119,55 +122,81 @@ function updateConfig(args: {
         MEDICATIONS: Array.isArray(input['medications']) ? input['medications'].join(', ') : ''
     });
 
-    const kvs = await Actor.openKeyValueStore();
-    await kvs.setValue('report', fs.readFileSync(path.join(__dirname, 'playwright-report', 'index.html'), { encoding: 'utf-8' }), { contentType: 'text/html' });
-
     // Store video files if they exist
     try {
-        const videoDir = path.join(__dirname, 'videos');
-        log.info('Checking for videos in directory', { videoDir });
+        // Get the default key-value store for this run
+        const kvs = await Actor.openKeyValueStore();
+        log.info('Using run-specific key-value store', { 
+            storeId: kvs.id
+        });
+
+        // Store the HTML report
+        await kvs.setValue('report.html', fs.readFileSync(path.join(__dirname, 'playwright-report', 'index.html'), { encoding: 'utf-8' }), { contentType: 'text/html' });
         
-        if (fs.existsSync(videoDir)) {
-            const files = fs.readdirSync(videoDir);
-            log.info('Found video files', { count: files.length });
+        log.info('Video directory configuration', { 
+            configuredPath: VIDEO_DIR,
+            exists: fs.existsSync(VIDEO_DIR),
+            absolutePath: path.resolve(VIDEO_DIR)
+        });
+        
+        if (fs.existsSync(VIDEO_DIR)) {
+            const files = fs.readdirSync(VIDEO_DIR);
+            log.info('Found video files', { 
+                count: files.length,
+                files: files,
+                directory: VIDEO_DIR
+            });
             
             for (const file of files) {
                 if (file.endsWith('.webm')) {
-                    const videoPath = path.join(videoDir, file);
-                    log.info('Processing video file', { path: videoPath });
+                    const videoPath = path.join(VIDEO_DIR, file);
+                    log.info('Processing video file', { 
+                        path: videoPath,
+                        size: fs.statSync(videoPath).size
+                    });
                     
                     const videoBuffer = fs.readFileSync(videoPath);
-                    const key = `video-${Date.now()}-${file}`;
+                    const key = `video-${file}`; // Simplified key for better identification
                     
-                    log.info('Uploading video', { key });
+                    log.info('Uploading video to run storage', { key, size: videoBuffer.length });
                     await kvs.setValue(key, videoBuffer, { 
                         contentType: 'video/webm'
                     });
-                    log.info('Successfully uploaded video', { key });
+                    log.info('Successfully uploaded video to run storage', { key });
                 }
             }
         } else {
-            log.warning('Video directory not found', { path: videoDir });
+            log.warning('Video directory not found', { 
+                path: VIDEO_DIR,
+                cwd: process.cwd(),
+                dirContents: fs.readdirSync(process.cwd())
+            });
         }
+
+        // Process other attachments
+        const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
+        const attachmentPaths = collectAttachmentPaths(jsonReport);
+
+        const attachmentLinks = await Promise.all(attachmentPaths.map(async (attachment: Attachment) => {
+            const content = fs.readFileSync(path.join(__dirname, attachment.path));
+            const key = attachment.key;
+            await kvs.setValue(key, content, { contentType: attachment.type });
+            return {
+                ...attachment,
+                url: `https://api.apify.com/v2/key-value-stores/${kvs.id}/records/${key}`
+            };
+        }));
+
+        const dataset = await Actor.openDataset();
+        await dataset.pushData(transformToTabular(jsonReport, attachmentLinks));
+
     } catch (error) {
-        log.error('Error handling video files', { error: error instanceof Error ? error.message : String(error) });
+        log.error('Error handling storage', { 
+            error: error instanceof Error ? error.message : String(error),
+            videoDir: VIDEO_DIR,
+            cwd: process.cwd()
+        });
     }
-
-    const jsonReport = JSON.parse(fs.readFileSync(path.join(__dirname, 'test-results.json'), { encoding: 'utf-8' }));
-    const attachmentPaths = collectAttachmentPaths(jsonReport);
-
-    const attachmentLinks = await Promise.all(attachmentPaths.map(async (attachment: Attachment) => {
-        const content = fs.readFileSync(path.join(__dirname, attachment.path));
-        const key = attachment.key;
-        await kvs.setValue(key, content, { contentType: attachment.type });
-        return {
-            ...attachment,
-            url: `https://api.apify.com/v2/key-value-stores/${kvs.id}/records/${key}`
-        };
-    }));
-
-    const dataset = await Actor.openDataset();
-    await dataset.pushData(transformToTabular(jsonReport, attachmentLinks));
 
     await Actor.exit();
 })();
