@@ -90,7 +90,7 @@ function updateConfig(args: {
 
     // 📥 2. Get patient data dynamically
     const patientName = (input['patientName'] as string) || 'Unknown Patient';
-    const medications = ((input['medications'] as string[]) || []).join(', ');
+    const medications = Array.isArray(input['medications']) ? input['medications'].join(', ') : '';
 
     storeTestCode({
         contents: input['testCode'] as string,
