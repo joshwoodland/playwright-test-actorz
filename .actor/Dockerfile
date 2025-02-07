@@ -12,6 +12,12 @@ RUN npm ci
 # Copy source files
 COPY . .
 
+# Create necessary directories and set permissions
+RUN mkdir -p test-results && \
+    mkdir -p playwright-report && \
+    mkdir -p test-results/.playwright-artifacts-0 && \
+    chown -R pwuser:pwuser /usr/src/app
+
 # Set the user to non-root
 USER pwuser
 
