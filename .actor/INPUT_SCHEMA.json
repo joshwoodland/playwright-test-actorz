@@ -7,9 +7,9 @@
         "testCode": {
             "title": "Test suite code",
             "type": "string",
-            "description": "Contents of the test suite file.",
+            "description": "Contents of the test suite file. Environment variables EMAIL and PASSWORD are available during the run.",
             "editor": "javascript",
-            "prefill": "import { test, expect } from '@playwright/test';\n    test('has title', async ({ page }) => {\n      await page.goto('https://playwright.dev/');\n      await expect(page).toHaveTitle(/Playwright/);\n    });",
+            "prefill": "import { test, expect } from '@playwright/test';\n\n// Access environment variables\nconst email = process.env.EMAIL;\nconst password = process.env.PASSWORD;\nconst patientName = process.env.PATIENT_NAME;\nconst medications = process.env.MEDICATIONS;\n\ntest('login and check patient', async ({ page }) => {\n    // Navigate to the login page\n    await page.goto('https://your-healthcare-site.com/login');\n\n    // Use the environment variables for login\n    await page.fill('#email', email);\n    await page.fill('#password', password);\n    await page.click('#login-button');\n\n    // Verify login success\n    await expect(page.locator('.user-profile')).toBeVisible();\n\n    // Check patient details\n    await page.goto(`https://your-healthcare-site.com/patients/${patientName}`);\n    await expect(page.locator('.patient-name')).toHaveText(patientName);\n    \n    // Verify medications if available\n    if (medications) {\n        const medList = medications.split(', ');\n        for (const med of medList) {\n            await expect(page.locator('.medications-list')).toContainText(med);\n        }\n    }\n});",
             "sectionCaption": "Basic settings"
         },
         "screenWidth": {
