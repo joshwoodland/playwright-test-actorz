@@ -20,33 +20,49 @@ test('Patient appointment verification', async ({ page }) => {
         // 🔐 1. Log in
         console.log('🔑 Attempting login...');
         await page.goto('https://www.simplepractice.com');
-        await page.click('text=Sign In');
         
-        // Use credentials from environment variables
-        await page.getByLabel('Email').click();
-        await page.getByLabel('Email').fill(email);
-        await page.getByLabel('Password').click();
-        await page.getByLabel('Password').fill(password);
+        // Wait for and click sign in button
+        const signInButton = page.getByRole('link', { name: 'Sign in' });
+        await signInButton.waitFor({ state: 'visible' });
+        await signInButton.click();
+        
+        // Wait for and fill login form
+        const emailInput = page.getByLabel('Email');
+        const passwordInput = page.getByLabel('Password');
+        await emailInput.waitFor({ state: 'visible' });
+        await passwordInput.waitFor({ state: 'visible' });
+        await emailInput.fill(email);
+        await passwordInput.fill(password);
         await page.getByRole('button', { name: 'Sign in' }).click();
         
-        // Wait for login to complete
-        await page.waitForURL('https://secure.simplepractice.com/**');
+        // Wait for the search clients input to be visible (indicates successful login)
+        console.log('⏳ Waiting for login to complete...');
+        const searchInput = page.getByPlaceholder('Search clients');
+        await searchInput.waitFor({ state: 'visible', timeout: 30000 });
         console.log('✅ Login successful');
         
         // 🔍 2. Search for patient
         console.log('🔎 Searching for patient:', patientName);
-        await page.getByPlaceholder('Search').fill(patientName);
+        await searchInput.click();
+        await searchInput.fill(patientName);
         await page.keyboard.press('Enter');
-        await page.getByRole('link', { name: patientName }).click();
         
-        // Wait for patient page to load
-        await page.waitForLoadState('networkidle');
+        // Wait for patient link and click
+        const patientLink = page.getByRole('link', { name: patientName });
+        await patientLink.waitFor({ state: 'visible', timeout: 10000 });
+        await patientLink.click();
+        
+        // Wait for patient name in header/title
+        const patientHeader = page.getByText(patientName).first();
+        await patientHeader.waitFor({ state: 'visible', timeout: 10000 });
         console.log('✅ Patient found');
 
         // 📅 3. Find next appointment
         console.log('🔍 Looking for next appointment...');
-        const nextApptElement = await page.getByText('next appt', { exact: false });
+        const nextApptElement = await page.getByText('Next Appt', { exact: false });
+        await nextApptElement.waitFor({ state: 'visible', timeout: 10000 });
         const nextApptText = await nextApptElement.textContent();
+        console.log('Found appointment text:', nextApptText);
         const nextApptDate = nextApptText?.match(/\d{2}\/\d{2}\/\d{4}/)?.[0];
 
         // ⏰ 4. Calculate days and prepare message

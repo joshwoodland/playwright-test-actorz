@@ -86,480 +86,53 @@ test('Patient appointment verification', async ({ page }) => {
         await page.goto('https://www.simplepractice.com', { waitUntil: 'networkidle' });
         console.log('✅ Page loaded');
 
-        // Try multiple strategies to find and click the sign-in button
-        async function findAndClickSignIn() {
-            const strategies = [
-                // Strategy 1: By test ID
-                async () => {
-                    const button = page.getByTestId('signIn-tryItFree-wrapper').getByRole('link', { name: 'Sign in' });
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                },
-                // Strategy 2: By exact text
-                async () => {
-                    const button = page.getByText('Sign in', { exact: true });
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                },
-                // Strategy 3: By role and name
-                async () => {
-                    const button = page.getByRole('link', { name: /sign.?in/i });
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                },
-                // Strategy 4: By CSS selector
-                async () => {
-                    const button = page.locator('a:has-text("Sign in"), a:has-text("Sign In")').first();
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                }
-            ];
-
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Strategy failed, trying next one...');
-                }
-            }
-            throw new Error('All sign-in button strategies failed');
-        }
-
-        await findAndClickSignIn();
+        // Wait for and click sign in button
+        const signInButton = page.getByTestId('signIn-tryItFree-wrapper').getByRole('link', { name: 'Sign in' });
+        await signInButton.waitFor({ state: 'visible', timeout: 5000 });
+        await signInButton.click();
         console.log('✅ Clicked sign in button');
 
-        // Wait for login form with multiple strategies
-        async function findAndFillLoginForm() {
-            const strategies = [
-                // Strategy 1: By label
-                async () => {
-                    const emailInput = page.getByLabel('Email');
-                    const passwordInput = page.getByLabel('Password');
-                    await Promise.all([
-                        emailInput.waitFor({ state: 'visible', timeout: 5000 }),
-                        passwordInput.waitFor({ state: 'visible', timeout: 5000 })
-                    ]);
-                    await emailInput.fill(email);
-                    await passwordInput.fill(password);
-                    return true;
-                },
-                // Strategy 2: By placeholder
-                async () => {
-                    const emailInput = page.getByPlaceholder('Email');
-                    const passwordInput = page.getByPlaceholder('Password');
-                    await Promise.all([
-                        emailInput.waitFor({ state: 'visible', timeout: 5000 }),
-                        passwordInput.waitFor({ state: 'visible', timeout: 5000 })
-                    ]);
-                    await emailInput.fill(email);
-                    await passwordInput.fill(password);
-                    return true;
-                },
-                // Strategy 3: By type and name attributes
-                async () => {
-                    const emailInput = page.locator('input[type="email"], input[name="email"]').first();
-                    const passwordInput = page.locator('input[type="password"]').first();
-                    await Promise.all([
-                        emailInput.waitFor({ state: 'visible', timeout: 5000 }),
-                        passwordInput.waitFor({ state: 'visible', timeout: 5000 })
-                    ]);
-                    await emailInput.fill(email);
-                    await passwordInput.fill(password);
-                    return true;
-                }
-            ];
+        // Wait for and fill login form
+        const emailInput = page.getByLabel('Email');
+        const passwordInput = page.getByLabel('Password');
+        await Promise.all([
+            emailInput.waitFor({ state: 'visible', timeout: 5000 }),
+            passwordInput.waitFor({ state: 'visible', timeout: 5000 })
+        ]);
+        await emailInput.fill(email);
+        await passwordInput.fill(password);
 
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Login form strategy failed, trying next one...');
-                }
-            }
-            throw new Error('All login form strategies failed');
-        }
-
-        await findAndFillLoginForm();
+        // Click sign in and wait for dashboard
+        await page.getByRole('button', { name: 'Sign in' }).click();
         
-        // Find and click the submit button
-        async function findAndClickSubmit() {
-            const strategies = [
-                // Strategy 1: By role and name
-                async () => {
-                    const button = page.getByRole('button', { name: /sign.?in/i });
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                },
-                // Strategy 2: By type submit
-                async () => {
-                    const button = page.locator('button[type="submit"]').first();
-                    await button.waitFor({ state: 'visible', timeout: 5000 });
-                    await button.click();
-                    return true;
-                },
-                // Strategy 3: By form submission
-                async () => {
-                    const form = page.locator('form').first();
-                    await form.evaluate(form => form.submit());
-                    return true;
-                }
-            ];
-
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Submit button strategy failed, trying next one...');
-                }
-            }
-            throw new Error('All submit button strategies failed');
-        }
-
-        await findAndClickSubmit();
-        
-        // Wait for login to complete with multiple success indicators
-        async function waitForLoginSuccess() {
-            const strategies = [
-                // Strategy 1: URL change
-                async () => {
-                    await page.waitForURL('https://secure.simplepractice.com/**', { timeout: 30000 });
-                    return true;
-                },
-                // Strategy 2: Dashboard element
-                async () => {
-                    await page.waitForSelector('[data-testid="dashboard"]', { timeout: 30000 });
-                    return true;
-                },
-                // Strategy 3: Navigation menu
-                async () => {
-                    await page.waitForSelector('nav, .navigation, .menu', { timeout: 30000 });
-                    return true;
-                }
-            ];
-
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Login success check strategy failed, trying next one...');
-                }
-            }
-            throw new Error('Could not verify successful login');
-        }
-
-        await waitForLoginSuccess();
+        // Wait for the search clients input to be visible (indicates successful login)
+        console.log('⏳ Waiting for login to complete...');
+        const searchInput = page.getByPlaceholder('Search clients');
+        await searchInput.waitFor({ state: 'visible', timeout: 30000 });
         console.log('✅ Login successful');
         
-        // 🔍 2. Search for patient with retries
+        // 🔍 2. Search for patient
         console.log('🔎 Searching for patient:', patientName);
-        async function findAndSearchPatient() {
-            const strategies = [
-                // Strategy 1: By placeholder
-                async () => {
-                    console.log('Trying search strategy 1: By placeholder');
-                    const searchInput = page.getByPlaceholder('Search');
-                    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
-                    await searchInput.click();
-                    await searchInput.fill(patientName);
-                    await page.keyboard.press('Enter');
-                    return true;
-                },
-                // Strategy 2: By role
-                async () => {
-                    console.log('Trying search strategy 2: By role');
-                    const searchInput = page.getByRole('searchbox');
-                    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
-                    await searchInput.click();
-                    await searchInput.fill(patientName);
-                    await page.keyboard.press('Enter');
-                    return true;
-                },
-                // Strategy 3: By common search selectors
-                async () => {
-                    console.log('Trying search strategy 3: By common search selectors');
-                    const searchInput = page.locator('input[type="search"], .search-input, #search').first();
-                    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
-                    await searchInput.click();
-                    await searchInput.fill(patientName);
-                    await page.keyboard.press('Enter');
-                    return true;
-                },
-                // Strategy 4: By aria-label
-                async () => {
-                    console.log('Trying search strategy 4: By aria-label');
-                    const searchInput = page.locator('[aria-label*="search" i], [aria-label*="find" i]').first();
-                    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
-                    await searchInput.click();
-                    await searchInput.fill(patientName);
-                    await page.keyboard.press('Enter');
-                    return true;
-                }
-            ];
-
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Search strategy failed, trying next one...', e.message);
-                }
-            }
-            throw new Error('All search strategies failed');
-        }
-
-        await findAndSearchPatient();
-        console.log('✅ Search input completed');
-
-        // Wait for search results to load
-        console.log('Waiting for search results...');
-        try {
-            await page.waitForLoadState('networkidle', { timeout: 10000 });
-            console.log('Network activity settled');
-        } catch (e) {
-            console.log('Network activity timeout, proceeding anyway');
-        }
-
-        // Additional wait for search results to render
-        await page.waitForTimeout(2000);
-        console.log('Extra wait completed');
-
-        // Wait for and click patient link with enhanced logging
-        async function findAndClickPatient() {
-            console.log('Looking for patient link with name:', patientName);
-            const strategies = [
-                // Strategy 1: By role and name
-                async () => {
-                    console.log('Trying patient link strategy 1: By role and name');
-                    const link = page.getByRole('link', { name: patientName });
-                    await link.waitFor({ state: 'visible', timeout: 5000 });
-                    const isVisible = await link.isVisible();
-                    console.log('Link visible status:', isVisible);
-                    const linkText = await link.textContent();
-                    console.log('Link text content:', linkText);
-                    if (!linkText?.includes(patientName)) {
-                        console.log('Link text does not match patient name');
-                        return false;
-                    }
-                    // Click with navigation verification
-                    console.log('Attempting to click link...');
-                    const [response] = await Promise.all([
-                        page.waitForNavigation({ timeout: 10000 }),
-                        link.click()
-                    ]);
-                    console.log('Navigation completed, new URL:', response?.url());
-                    return true;
-                },
-                // Strategy 2: By text content
-                async () => {
-                    console.log('Trying patient link strategy 2: By text content');
-                    const link = page.getByText(patientName, { exact: true });
-                    await link.waitFor({ state: 'visible', timeout: 5000 });
-                    const isVisible = await link.isVisible();
-                    console.log('Link visible status:', isVisible);
-                    const linkText = await link.textContent();
-                    console.log('Link text content:', linkText);
-                    if (!linkText?.includes(patientName)) {
-                        console.log('Link text does not match patient name');
-                        return false;
-                    }
-                    await link.click();
-                    return true;
-                },
-                // Strategy 3: By partial match
-                async () => {
-                    console.log('Trying patient link strategy 3: By partial match');
-                    const link = page.getByRole('link').filter({ hasText: patientName }).first();
-                    await link.waitFor({ state: 'visible', timeout: 5000 });
-                    const isVisible = await link.isVisible();
-                    console.log('Link visible status:', isVisible);
-                    const linkText = await link.textContent();
-                    console.log('Link text content:', linkText);
-                    if (!linkText?.includes(patientName)) {
-                        console.log('Link text does not match patient name');
-                        return false;
-                    }
-                    await link.click();
-                    return true;
-                },
-                // Strategy 4: By table cell or list item
-                async () => {
-                    console.log('Trying patient link strategy 4: By table/list content');
-                    const element = page.locator('tr, li').filter({ hasText: patientName }).first();
-                    await element.waitFor({ state: 'visible', timeout: 5000 });
-                    const isVisible = await element.isVisible();
-                    console.log('Element visible status:', isVisible);
-                    const elementText = await element.textContent();
-                    console.log('Element text content:', elementText);
-                    if (!elementText?.includes(patientName)) {
-                        console.log('Element text does not match patient name');
-                        return false;
-                    }
-                    await element.click();
-                    return true;
-                },
-                // Strategy 5: By fuzzy match
-                async () => {
-                    console.log('Trying patient link strategy 5: By fuzzy match');
-                    const nameParts = patientName.split(' ');
-                    const element = page.getByRole('link').filter({ hasText: new RegExp(nameParts.join('.*'), 'i') }).first();
-                    await element.waitFor({ state: 'visible', timeout: 5000 });
-                    const isVisible = await element.isVisible();
-                    console.log('Element visible status:', isVisible);
-                    const elementText = await element.textContent();
-                    console.log('Element text content:', elementText);
-                    if (!elementText?.includes(patientName)) {
-                        console.log('Element text does not match patient name');
-                        return false;
-                    }
-                    await element.click();
-                    return true;
-                }
-            ];
-
-            // Log the current page content for debugging
-            console.log('Current page content:', await page.content());
-
-            for (const strategy of strategies) {
-                try {
-                    if (await strategy()) {
-                        return true;
-                    }
-                } catch (e) {
-                    console.log('Patient link strategy failed, trying next one...', e.message);
-                }
-            }
-            throw new Error('All patient link strategies failed');
-        }
-
-        await findAndClickPatient();
-        console.log('✅ Patient link clicked');
+        await searchInput.click();
+        await searchInput.fill(patientName);
+        await page.keyboard.press('Enter');
         
-        // Wait for patient page to load with enhanced verification
-        console.log('Waiting for patient page to load...');
+        // Wait for patient link and click
+        const patientLink = page.getByRole('link', { name: patientName });
+        await patientLink.waitFor({ state: 'visible', timeout: 10000 });
+        await patientLink.click();
         
-        // Define success indicators for patient page load
-        const pageLoadStrategies = [
-            // Strategy 1: URL verification
-            async () => {
-                const currentUrl = page.url();
-                console.log('Current URL:', currentUrl);
-                if (currentUrl.includes('/clients/') && currentUrl.includes('/overview')) {
-                    return 'URL indicates patient page';
-                }
-                return false;
-            },
-            // Strategy 2: Quick check for any patient content
-            async () => {
-                const content = await page.content();
-                if (content.includes(patientName)) {
-                    return 'Patient name found in content';
-                }
-                return false;
-            }
-        ];
+        // Wait for patient name in header/title
+        const patientHeader = page.getByText(patientName).first();
+        await patientHeader.waitFor({ state: 'visible', timeout: 10000 });
+        console.log('✅ Patient found');
 
-        let pageLoadSuccess = false;
-        for (const strategy of pageLoadStrategies) {
-            try {
-                const result = await strategy();
-                if (result) {
-                    console.log('Page load verified:', result);
-                    pageLoadSuccess = true;
-                    break;
-                }
-            } catch (e) {
-                console.log('Page load check failed:', e.message);
-            }
-        }
-
-        if (!pageLoadSuccess) {
-            console.log('⚠️ Could not verify patient page load');
-            console.log('Current page content:', await page.content());
-            throw new Error('Failed to verify patient page load');
-        }
-
-        console.log('✅ Patient page verified');
-
-        // 📅 3. Find next appointment with multiple strategies
+        // 📅 3. Find next appointment
         console.log('🔍 Looking for next appointment...');
-        async function findNextAppointment() {
-            const strategies = [
-                // Strategy 1: By text content
-                async () => {
-                    console.log('Trying appointment strategy 1: By text content');
-                    const element = await page.getByText(/next appt|upcoming|scheduled/i, { exact: false });
-                    const text = await element.textContent();
-                    console.log('Found text:', text);
-                    return text;
-                },
-                // Strategy 2: By appointment section
-                async () => {
-                    console.log('Trying appointment strategy 2: By appointment section');
-                    const element = await page.locator('[data-testid*="appointment"], [class*="appointment"], .appointments, #appointments').first();
-                    const text = await element.textContent();
-                    console.log('Found text:', text);
-                    return text;
-                },
-                // Strategy 3: By date pattern
-                async () => {
-                    console.log('Trying appointment strategy 3: By date pattern');
-                    const element = await page.locator('text=/[0-9]{2}\/[0-9]{2}\/[0-9]{4}/').first();
-                    const text = await element.textContent();
-                    console.log('Found text:', text);
-                    return text;
-                },
-                // Strategy 4: By calendar section
-                async () => {
-                    console.log('Trying appointment strategy 4: By calendar section');
-                    const element = await page.locator('[data-testid*="calendar"], [class*="calendar"], #calendar').first();
-                    const text = await element.textContent();
-                    console.log('Found text:', text);
-                    return text;
-                },
-                // Strategy 5: By overview section
-                async () => {
-                    console.log('Trying appointment strategy 5: By overview section');
-                    const element = await page.locator('.overview, #overview, [data-testid*="overview"]').first();
-                    const text = await element.textContent();
-                    console.log('Found text:', text);
-                    return text;
-                }
-            ];
-
-            // Log the current page content for debugging
-            console.log('Current page content:', await page.content());
-
-            for (const strategy of strategies) {
-                try {
-                    const text = await strategy();
-                    if (text) {
-                        console.log('Strategy succeeded with text:', text);
-                        return text;
-                    }
-                } catch (e) {
-                    console.log('Appointment search strategy failed:', e.message);
-                }
-            }
-            console.log('⚠️ No future appointment found with any strategy');
-            return null;
-        }
-
-        const nextApptText = await findNextAppointment();
-        console.log('Next appointment text found:', nextApptText);
+        const nextApptElement = await page.getByText('Next Appt', { exact: false });
+        await nextApptElement.waitFor({ state: 'visible', timeout: 10000 });
+        const nextApptText = await nextApptElement.textContent();
+        console.log('Found appointment text:', nextApptText);
         
         // Try to extract date with multiple patterns
         let nextApptDate = null;
