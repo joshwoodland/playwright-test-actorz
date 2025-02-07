@@ -564,10 +564,10 @@ test('Patient appointment verification', async ({ page }) => {
         // Try to extract date with multiple patterns
         let nextApptDate = null;
         const datePatterns = [
-            /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/,
-            /[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}/,
-            /[0-9]{4}-[0-9]{2}-[0-9]{2}/,
-            /[A-Za-z]+ [0-9]{1,2},? [0-9]{4}/
+            /\d{2}\/\d{2}\/\d{4}/,
+            /\d{1,2}\/\d{1,2}\/\d{4}/,
+            /\d{4}-\d{2}-\d{2}/,
+            /[A-Za-z]+ \d{1,2},? \d{4}/
         ];
 
         for (const pattern of datePatterns) {
