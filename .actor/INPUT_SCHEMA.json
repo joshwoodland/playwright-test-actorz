@@ -57,7 +57,7 @@
             "title": "Record video",
             "type": "string",
             "enum": ["on", "off", "retain-on-failure", "on-first-retry"],
-            "default": "off",
+            "default": "on",
             "enumTitles": ["Always", "Never", "Retain on failure", "On first retry"],
             "description": "Record video of the test run."
         },
@@ -75,5 +75,5 @@
             "prefill": []
         }
     },
-    "required": ["testCode"]
+    "required": []
 }
