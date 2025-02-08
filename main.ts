@@ -30,6 +30,11 @@ interface ActorInput {
     darkMode?: boolean;
     locale?: string;
     video?: string;
+    /**
+     * If provided, this string of test code will be written out to a test file
+     * and run instead of the default test spec.
+     */
+    testCode?: string;
 }
 
 (async () => {

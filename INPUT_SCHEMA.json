@@ -1,0 +1,20 @@
+{
+    "title": "Playwright Test",
+    "description": "Playwright Test automates end-to-end web tests...",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "email": { ... },
+        "password": { ... },
+        "patientName": { ... },
+        "medications": { ... },
+        ...
+        "testCode": {
+            "title": "Custom Test Code",
+            "type": "string",
+            "description": "If provided, this code will override the default test spec and be executed in its place.",
+            "editor": "textfield"
+        }
+    },
+    "required": ["email", "password", "patientName", "medications"]
+} 
