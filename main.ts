@@ -399,6 +399,18 @@ function updateConfig(args: {
         log.info('Test results stored in dataset');
     }
 
+    // Store error screenshot in key-value store if it exists
+    try {
+        if (fs.existsSync('error-state.png')) {
+            const kvs = await Actor.openKeyValueStore();
+            const screenshotBuffer = fs.readFileSync('error-state.png');
+            await kvs.setValue('ERROR_SCREENSHOT', screenshotBuffer, { contentType: 'image/png' });
+            log.info('Error screenshot stored in key-value store');
+        }
+    } catch (error) {
+        log.error('Failed to store error screenshot:', error);
+    }
+
     // Store screenshots and other artifacts
     try {
         const kvs = await Actor.openKeyValueStore();
